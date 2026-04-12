@@ -1,3 +1,5 @@
+![FreeConduktor](src/main/resources/com/freeconductor/icons/free-conduktor-banner-400.png)
+
 # FreeConduktor
 
 All of this was vibe-coded with Claude (Sonnet 4.6). All the features which I have tested, work. Please submit bug reports with screenshots via Github Issues if you test something and find it does not work.
@@ -7,6 +9,11 @@ Feature improvements will also be accepted and are encoraged. I would also like 
 #### Free Conduktor (Open Source clone of Conduktor Desktop)
 
 An open-source Kafka management desktop GUI built with Kotlin and JavaFX, inspired by Conduktor Desktop. Provides a visual interface for managing Kafka clusters, topics, consumer groups, schemas, connectors, and more.
+
+FreeConduktor is a client — you need a running Kafka broker to connect to.
+If you don't have one, the Apache Kafka quickstart is the easiest way to get one running locally:
+
+- https://kafka.apache.org/quickstart
 
 ## Features
 
