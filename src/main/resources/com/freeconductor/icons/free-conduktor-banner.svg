@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="264mm"
+   height="30mm"
+   viewBox="0 0 264 30"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="free-conduktor-banner.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     inkscape:zoom="1"
+     inkscape:cx="488"
+     inkscape:cy="73.5"
+     inkscape:window-width="2044"
+     inkscape:window-height="1211"
+     inkscape:window-x="1141"
+     inkscape:window-y="448"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       d="M 8.6602553,0 4.3300809,7.4999995 0,15.000001 4.3301744,22.5 8.6602553,30 H 17.32051 L 10.825296,18.750047 17.32051,15.000001 15.155468,11.249953 Z"
+       style="fill:#0d47a1;stroke-width:0.0476826"
+       id="path15" />
+    <path
+       d="m 17.32051,0 6.495122,11.249953 -6.495122,3.750048 2.165041,3.749952 L 25.980764,30 30.310847,22.5 34.64102,15.000001 30.310847,7.4999995 25.980764,0 Z"
+       style="fill:#1976d2;stroke-width:0.0476826"
+       id="path16" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:25.4px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#0d47a1;stroke:#ff0c0c;stroke-width:0.265112;stroke-dasharray:none"
+       x="38.265423"
+       y="24.080502"
+       id="text1"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:25.4px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.265112;stroke-dasharray:none;stroke-opacity:1"
+         x="38.265423"
+         y="24.080502">FREECONDUKTOR</tspan></text>
+  </g>
+</svg>
