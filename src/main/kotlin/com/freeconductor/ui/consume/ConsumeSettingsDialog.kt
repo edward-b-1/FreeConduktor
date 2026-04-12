@@ -16,7 +16,7 @@ class ConsumeSettingsDialog(
         items.addAll(ConsumeFrom.values())
         value = current?.from ?: ConsumeFrom.LATEST
     }
-    private val maxMessagesField = TextField((current?.maxMessages ?: 100).toString())
+    private val maxMessagesField = TextField((current?.limitValue ?: 100).toString())
     private val specificOffsetField = TextField((current?.specificOffset ?: 0L).toString())
     private val specificDatetimeField = TextField(
         current?.specificTimestamp?.let {
@@ -104,7 +104,7 @@ class ConsumeSettingsDialog(
         return ConsumeSettings(
             topic = topicName,
             from = fromBox.value,
-            maxMessages = maxMessagesField.text.trim().toIntOrNull() ?: 100,
+            limitValue = maxMessagesField.text.trim().toLongOrNull() ?: 100,
             keyDeserializer = keyDeserBox.value,
             valueDeserializer = valueDeserBox.value,
             specificOffset = specificOffsetField.text.trim().toLongOrNull(),

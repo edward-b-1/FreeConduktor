@@ -16,6 +16,9 @@ dependencies {
     // Kafka
     implementation("org.apache.kafka:kafka-clients:3.6.1")
 
+    // Avro
+    implementation("org.apache.avro:avro:1.11.3")
+
     // HTTP + JSON for REST APIs
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1")

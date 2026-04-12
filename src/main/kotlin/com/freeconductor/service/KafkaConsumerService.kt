@@ -3,12 +3,18 @@ package com.freeconductor.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.freeconductor.model.*
+import org.apache.avro.file.DataFileStream
+import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.generic.GenericDatumWriter
+import org.apache.avro.generic.GenericRecord
+import org.apache.avro.io.EncoderFactory
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.slf4j.LoggerFactory
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.*
@@ -101,18 +107,60 @@ class KafkaConsumerService(private val clusterConfig: com.freeconductor.model.Cl
                 }
             }
 
-            var count = 0
-            while (running && count < settings.maxMessages) {
+            var totalCount = 0L
+            var totalBytes = 0L
+            val partitionCounts = mutableMapOf<TopicPartition, Long>()
+            val partitionBytes  = mutableMapOf<TopicPartition, Long>()
+            val activePartitions = filtered.toMutableList()
+            val limitVal = settings.limitValue ?: Long.MAX_VALUE
+
+            while (running) {
                 val records = c.poll(Duration.ofMillis(1000))
-                if (records.isEmpty && settings.from != ConsumeFrom.CONSUMER_GROUP) {
-                    break
-                }
                 for (record in records) {
                     if (!running) break
+
+                    val tp = TopicPartition(record.topic(), record.partition())
+                    val recordBytes = (record.serializedKeySize().coerceAtLeast(0) +
+                                       record.serializedValueSize().coerceAtLeast(0)).toLong()
+
                     val msg = convertRecord(record, settings.keyDeserializer, settings.valueDeserializer)
                     onMessage(msg)
-                    count++
-                    if (count >= settings.maxMessages) break
+
+                    totalCount++
+                    totalBytes += recordBytes
+                    partitionCounts[tp] = (partitionCounts[tp] ?: 0L) + 1
+                    partitionBytes[tp]  = (partitionBytes[tp]  ?: 0L) + recordBytes
+
+                    when (settings.limit) {
+                        ConsumeLimit.RECORD_COUNT ->
+                            if (totalCount >= limitVal) running = false
+
+                        ConsumeLimit.SPECIFIC_DATE ->
+                            if (record.timestamp() >= limitVal) running = false
+
+                        ConsumeLimit.MAX_BYTES ->
+                            if (totalBytes >= limitVal) running = false
+
+                        ConsumeLimit.PER_PARTITION_RECORD_COUNT -> {
+                            if ((partitionCounts[tp] ?: 0L) >= limitVal) {
+                                activePartitions.remove(tp)
+                                if (activePartitions.isEmpty()) running = false
+                                else c.assign(activePartitions)
+                            }
+                        }
+
+                        ConsumeLimit.PER_PARTITION_MAX_BYTES -> {
+                            if ((partitionBytes[tp] ?: 0L) >= limitVal) {
+                                activePartitions.remove(tp)
+                                if (activePartitions.isEmpty()) running = false
+                                else c.assign(activePartitions)
+                            }
+                        }
+
+                        ConsumeLimit.NONE -> {}
+                    }
+
+                    if (!running) break
                 }
             }
             onComplete()
@@ -138,8 +186,8 @@ class KafkaConsumerService(private val clusterConfig: com.freeconductor.model.Cl
         keyDeserializer: Deserializer,
         valueDeserializer: Deserializer
     ): MessageRecord {
-        val key = record.key()?.let { deserialize(it, keyDeserializer) }
-        val value = record.value()?.let { deserialize(it, valueDeserializer) }
+        val key = if (keyDeserializer == Deserializer.NONE) null else record.key()?.let { deserialize(it, keyDeserializer) }
+        val value = if (valueDeserializer == Deserializer.NONE) null else record.value()?.let { deserialize(it, valueDeserializer) }
         val headers = record.headers().associate { header ->
             header.key() to (header.value()?.let { String(it) } ?: "")
         }
@@ -168,6 +216,10 @@ class KafkaConsumerService(private val clusterConfig: com.freeconductor.model.Cl
                     if (bytes.size == 8) ByteBuffer.wrap(bytes).long.toString()
                     else String(bytes, Charsets.UTF_8)
                 }
+                Deserializer.FLOAT -> {
+                    if (bytes.size == 4) ByteBuffer.wrap(bytes).float.toString()
+                    else String(bytes, Charsets.UTF_8)
+                }
                 Deserializer.DOUBLE -> {
                     if (bytes.size == 8) ByteBuffer.wrap(bytes).double.toString()
                     else String(bytes, Charsets.UTF_8)
@@ -182,6 +234,20 @@ class KafkaConsumerService(private val clusterConfig: com.freeconductor.model.Cl
                     }
                 }
                 Deserializer.BASE64 -> Base64.getEncoder().encodeToString(bytes)
+                Deserializer.AVRO_EMBEDDED -> {
+                    DataFileStream(bytes.inputStream(), GenericDatumReader<GenericRecord>()).use { stream ->
+                        val schema = stream.schema
+                        val record = stream.next()
+                        val writer = GenericDatumWriter<GenericRecord>(schema)
+                        val baos = ByteArrayOutputStream()
+                        val jsonEncoder = EncoderFactory.get().jsonEncoder(schema, baos)
+                        writer.write(record, jsonEncoder)
+                        jsonEncoder.flush()
+                        val node = mapper.readTree(baos.toByteArray())
+                        mapper.writerWithDefaultPrettyPrinter().writeValueAsString(node)
+                    }
+                }
+                Deserializer.NONE -> ""
             }
         } catch (e: Exception) {
             Base64.getEncoder().encodeToString(bytes)

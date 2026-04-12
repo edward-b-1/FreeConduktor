@@ -20,9 +20,12 @@ enum class Deserializer {
     STRING,
     INTEGER,
     LONG,
+    FLOAT,
     DOUBLE,
     JSON,
-    BASE64
+    BASE64,
+    AVRO_EMBEDDED,
+    NONE
 }
 
 enum class ConsumeFrom {
@@ -33,10 +36,20 @@ enum class ConsumeFrom {
     CONSUMER_GROUP
 }
 
+enum class ConsumeLimit {
+    NONE,
+    RECORD_COUNT,
+    SPECIFIC_DATE,
+    MAX_BYTES,
+    PER_PARTITION_RECORD_COUNT,
+    PER_PARTITION_MAX_BYTES
+}
+
 data class ConsumeSettings(
     val topic: String,
     val from: ConsumeFrom = ConsumeFrom.LATEST,
-    val maxMessages: Int = 100,
+    val limit: ConsumeLimit = ConsumeLimit.NONE,
+    val limitValue: Long? = null,
     val keyDeserializer: Deserializer = Deserializer.STRING,
     val valueDeserializer: Deserializer = Deserializer.JSON,
     val specificOffset: Long? = null,

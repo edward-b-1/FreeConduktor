@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Application logs at INFO -->
+    <logger name="com.freeconductor" level="INFO"/>
+
+    <!-- Suppress verbose third-party libraries -->
+    <logger name="org.apache.kafka"  level="WARN"/>
+    <logger name="org.apache.avro"   level="WARN"/>
+    <logger name="org.apache.zookeeper" level="WARN"/>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
