@@ -1,0 +1,485 @@
+/* ── Fonts ── */
+@font-face {
+    src: url("/com/freeconductor/fonts/Roboto-Regular.ttf");
+    -fx-font-family: "Roboto";
+}
+@font-face {
+    src: url("/com/freeconductor/fonts/Roboto-Bold.ttf");
+    -fx-font-family: "Roboto";
+    -fx-font-weight: bold;
+}
+@font-face {
+    src: url("/com/freeconductor/fonts/Roboto-Medium.ttf");
+    -fx-font-family: "Roboto";
+    -fx-font-weight: 500;
+}
+@font-face {
+    src: url("/com/freeconductor/fonts/RobotoMono-Regular.ttf");
+    -fx-font-family: "Roboto Mono";
+}
+
+.root { -fx-font-family: "Roboto"; }
+
+/* ── Sidebar ── */
+.sidebar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1 1 0 0;
+}
+.sidebar-header {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-muted;
+    -fx-letter-spacing: 1px;
+}
+.cluster-list {
+    -fx-background-color: transparent;
+    -fx-padding: 4 0 4 0;
+    -fx-hbar-policy: never;
+}
+.cluster-list .list-cell {
+    -fx-padding: 4 0 4 0;
+}
+
+/* ── Cluster list cells ── */
+.cluster-cell-name {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+    -fx-text-overrun: ellipsis;
+}
+.cluster-cell-detail {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-family: "Roboto Mono";
+    -fx-text-overrun: ellipsis;
+}
+.cluster-cell-detail-plain {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-fg-muted;
+    -fx-text-overrun: ellipsis;
+}
+.cluster-cell-status-connected,
+.cluster-cell-status-unreachable,
+.cluster-cell-status-checking {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-fg-muted;
+}
+.sidebar-logo-bar { -fx-background-color: -color-bg-subtle; }
+.sidebar-logo-text { -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default; }
+.code-area { -fx-font-family: "Roboto Mono"; -fx-font-size: 12px; }
+.connected-cluster { -fx-text-fill: -color-accent-fg; -fx-font-weight: bold; }
+
+/* ── Connected cluster header in sidebar ── */
+.connected-cluster-header {
+    -fx-background-color: -color-accent-subtle;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+}
+.connected-cluster-name {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+.connected-cluster-host {
+    -fx-font-size: 12px;
+    -fx-font-family: "Roboto Mono";
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* ── Nav buttons ── */
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 9 12 9 12;
+    -fx-font-size: 14px;
+    -fx-graphic-text-gap: 10;
+    -fx-cursor: hand;
+    -fx-text-fill: -color-fg-default;
+}
+.nav-button:hover {
+    -fx-background-color: -color-accent-subtle;
+    -fx-text-fill: -color-accent-fg;
+}
+.nav-button-active {
+    -fx-background-color: -color-accent-subtle;
+    -fx-text-fill: -color-accent-fg;
+    -fx-font-weight: bold;
+}
+.nav-button-active:hover {
+    -fx-background-color: -color-accent-subtle;
+    -fx-text-fill: -color-accent-fg;
+    -fx-font-weight: bold;
+}
+
+/* ── Connected cluster info row (strip + name/host) ── */
+.connected-cluster-info-row {
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ── Content nav bar (back / forward buttons above the main pane) ── */
+.content-nav-bar {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ── Primary toolbar (logo + action buttons) ── */
+.primary-toolbar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-min-height: 52px;
+}
+
+/* Top border only on the content pane — keeps the dividing line off the sidebar */
+.content-area {
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1 0 0 0;
+    -fx-background-color: -color-bg-default;
+}
+/* Force all toolbar buttons to a uniform height */
+.primary-toolbar .button,
+.primary-toolbar .split-menu-button {
+    -fx-pref-height: 34px;
+    -fx-min-height: 34px;
+    -fx-max-height: 34px;
+}
+
+/* Consumer / Producer action buttons */
+.toolbar-action-btn {
+    -fx-padding: 8 20 8 20;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+/* Settings / options icon button */
+.settings-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.settings-btn > .label {
+    -fx-padding: 7 4 7 12;
+}
+.settings-btn > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 7 10 7 8;
+}
+.settings-btn > .arrow-button > .arrow {
+    -fx-background-color: -color-fg-default;
+}
+.settings-btn:hover {
+    -fx-background-color: -color-bg-inset;
+}
+
+/* ── Refresh split button ── */
+.refresh-split-btn {
+    -fx-padding: 0;
+    -fx-font-size: 12px;
+}
+/* Icon side — same vertical padding as .settings-btn */
+.refresh-split-btn > .label {
+    -fx-padding: 7 6 7 14;
+}
+/* Arrow side — remove the separator line, add gap on the left */
+.refresh-split-btn > .arrow-button {
+    -fx-padding: 7 10 7 8;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.refresh-split-btn > .arrow-button > .arrow {
+    -fx-background-color: -color-fg-default;
+}
+
+/* ── Status bar ── */
+.status-bar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1 0 0 0;
+    -fx-font-size: 12px;
+}
+
+/* ── View titles ── */
+.view-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+.section-title-blue {
+    -fx-text-fill: -color-accent-fg;
+}
+
+/* ── Overview dashboard ── */
+.overview-section {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 16 12 16;
+}
+.overview-section-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-accent-fg;
+    -fx-cursor: hand;
+}
+.overview-section-title:hover { -fx-underline: true; }
+
+.stat-card {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 1 0 0;
+}
+.stat-card:last-child { -fx-border-width: 0; }
+
+.stat-value {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+.stat-value-alert {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-danger-fg;
+}
+.stat-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* ── Topics stats header ── */
+.topics-stats-bar {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0 0 20 0;
+}
+.topics-stat-box {
+    -fx-padding: 14 24 14 24;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 1 0 0;
+}
+.topics-stat-box:last-child { -fx-border-width: 0; }
+.topics-stat-value {
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+.topics-stat-ok    { -fx-text-fill: -color-fg-default; }
+.topics-stat-alert { -fx-text-fill: -color-danger-fg; }
+.topics-stat-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* ── Topics (legacy) ── */
+.topics-stats { -fx-font-size: 12px; -fx-text-fill: -color-fg-muted; }
+
+
+/* ── Consumer window left panel ── */
+.config-section-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-muted;
+    -fx-padding: 4 0 0 0;
+}
+.message-toolbar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ── Tables ── */
+.table-view { -fx-border-color: -color-border-default; -fx-border-width: 1; }
+.table-view .column-header { -fx-font-weight: bold; -fx-font-size: 12px; -fx-border-width: 0 0 1 0; }
+.table-view .column-header .label { -fx-border-width: 0; }
+.table-view .filler { -fx-border-width: 0 0 1 0; }
+
+/* ── Code / monospace areas ── */
+/* .code-area defined above with Roboto Mono */
+
+
+/* ── Welcome / cluster home ── */
+.title-label   { -fx-font-size: 24px; -fx-font-weight: bold; }
+.subtitle-label{ -fx-font-size: 14px; -fx-text-fill: -color-fg-muted; }
+
+/* ScrollPane reset so it blends with the page background */
+.edge-to-edge {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+.edge-to-edge > .viewport { -fx-background-color: transparent; }
+
+/* ── Cluster cards ── */
+.cluster-card {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 16 20 20 20;
+    -fx-cursor: hand;
+}
+.cluster-card:hover {
+    -fx-border-color: -color-accent-fg;
+    -fx-background-color: -color-bg-subtle;
+}
+.cluster-card-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+.cluster-card-host {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-family: "Roboto Mono";
+}
+
+/* ── Topic table ── */
+.topic-name-link {
+    -fx-text-fill: -color-accent-fg;
+    -fx-underline: false;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+.topic-name-link:hover { -fx-underline: true; }
+
+.row-icon-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0 3 0 3;
+    -fx-cursor: hand;
+    -fx-text-fill: -color-fg-muted;
+}
+.row-icon-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-background-radius: 4;
+    -fx-text-fill: -color-fg-default;
+}
+
+.row-consume-btn {
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 1 4 1 4;
+}
+.row-consume-btn:hover {
+    -fx-border-color: -color-accent-fg;
+}
+
+
+/* ── Sidebar collapse toggle button ── */
+.sidebar-collapse-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 4 10 4 10;
+}
+.sidebar-collapse-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-text-fill: -color-fg-default;
+}
+
+/* ── Home / disconnect button ── */
+.home-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: -color-fg-muted;
+    -fx-cursor: hand;
+}
+.home-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-text-fill: -color-fg-default;
+}
+
+/* ── Back / forward nav buttons ── */
+.nav-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 6 10 6 10;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-muted;
+    -fx-cursor: hand;
+    -fx-min-width: 32px;
+}
+.nav-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-text-fill: -color-fg-default;
+}
+.nav-btn:disabled {
+    -fx-opacity: 0.35;
+}
+
+/* ── Security / feature badges ── */
+.security-badge {
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+.security-badge-plaintext { -fx-background-color: -color-neutral-muted; -fx-text-fill: -color-fg-muted; }
+.security-badge-ssl       { -fx-background-color: -color-success-muted; -fx-text-fill: -color-success-fg; }
+.security-badge-sasl      { -fx-background-color: -color-warning-muted; -fx-text-fill: -color-warning-fg; }
+.security-badge-sasl-ssl  { -fx-background-color: -color-accent-muted;  -fx-text-fill: -color-accent-fg; }
+
+/* ── Broker detail view ── */
+.broker-config-name {
+    -fx-text-fill: -color-accent-fg;
+    -fx-font-size: 13px;
+}
+.broker-config-link {
+    -fx-text-fill: -color-accent-fg;
+    -fx-underline: false;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+}
+.broker-config-link:hover {
+    -fx-underline: true;
+}
+/* Compound selector beats any single-class AtlantaFX rule */
+.ikonli-font-icon.broker-lock-icon {
+    -fx-icon-size: 12;
+    -fx-icon-color: black;
+}
+
+.broker-config-badge {
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 2 6 2 6;
+    -fx-background-radius: 3;
+    -fx-min-width: 20px;
+    -fx-alignment: center;
+}
+/* S — Static (server.properties) — blue */
+.broker-config-badge-static  { -fx-background-color: #4078C0; }
+/* B — Broker-level dynamic override — green */
+.broker-config-badge-broker  { -fx-background-color: #2e8b57; }
+/* C — Cluster-wide dynamic default — purple */
+.broker-config-badge-cluster { -fx-background-color: #7b52ab; }
+/* T — Topic-level override — amber */
+.broker-config-badge-topic   { -fx-background-color: #b07d2a; }
