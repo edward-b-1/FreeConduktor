@@ -24,19 +24,27 @@ class MessageBrowserView(
     private val topicName: String,
     private val cluster: ClusterConfig,
     private val adminService: KafkaAdminService,
-    private val setStatus: (String) -> Unit
+    private val setStatus: (String) -> Unit,
+    private val setWindowTitle: (String) -> Unit = {}
 ) {
-    val root: SplitPane = SplitPane()
+    // Root is a BorderPane: fixed-width left panel | growing right panel
+    val root: BorderPane = BorderPane()
 
-    // ── Left panel controls ──────────────────────────────────────────────────
-    private val topicField = TextField(topicName).apply { promptText = "topic-name" }
+    // ── Topic selector ───────────────────────────────────────────────────────
+    private val topicCombo = ComboBox<String>().apply {
+        maxWidth = Double.MAX_VALUE
+        promptText = "Select a topic"
+        if (topicName.isNotBlank()) value = topicName
+    }
+
+    // ── Format controls ──────────────────────────────────────────────────────
     private val keyDeserBox = ComboBox<Deserializer>().apply {
         items.addAll(Deserializer.values()); value = Deserializer.STRING; maxWidth = Double.MAX_VALUE
     }
     private val valueDeserBox = ComboBox<Deserializer>().apply {
         items.addAll(Deserializer.values()); value = Deserializer.JSON; maxWidth = Double.MAX_VALUE
     }
-    private val fromGroup = ToggleGroup()
+    private val fromGroup    = ToggleGroup()
     private val fromLatest   = RadioButton("Latest (new messages)").apply { toggleGroup = fromGroup; isSelected = true; userData = ConsumeFrom.LATEST }
     private val fromEarliest = RadioButton("Earliest").apply { toggleGroup = fromGroup; userData = ConsumeFrom.EARLIEST }
     private val fromOffset   = RadioButton("Specific offset").apply { toggleGroup = fromGroup; userData = ConsumeFrom.SPECIFIC_OFFSET }
@@ -45,25 +53,26 @@ class MessageBrowserView(
     private val specificOffsetField = TextField().apply { promptText = "0"; isDisable = true; maxWidth = Double.MAX_VALUE }
     private val specificDateField   = TextField().apply { promptText = "2024-01-15 10:30:00"; isDisable = true; maxWidth = Double.MAX_VALUE }
     private val consumerGroupField  = TextField().apply { promptText = "my-group"; isDisable = true; maxWidth = Double.MAX_VALUE }
+
+    // ── Filter controls ──────────────────────────────────────────────────────
+    private val filterField = TextField().apply { promptText = "Filter key or value…"; maxWidth = Double.MAX_VALUE }
+
     // ── Limit controls ───────────────────────────────────────────────────────
-    private val limitGroup = ToggleGroup()
+    private val limitGroup           = ToggleGroup()
     private val limitNoneBtn         = RadioButton("None (forever)").apply      { toggleGroup = limitGroup; isSelected = true; userData = ConsumeLimit.NONE }
     private val limitRecordsBtn      = RadioButton("Number of records").apply   { toggleGroup = limitGroup; userData = ConsumeLimit.RECORD_COUNT }
     private val limitDateBtn         = RadioButton("Specific date").apply       { toggleGroup = limitGroup; userData = ConsumeLimit.SPECIFIC_DATE }
     private val limitBytesBtn        = RadioButton("Max size (bytes)").apply    { toggleGroup = limitGroup; userData = ConsumeLimit.MAX_BYTES }
     private val limitPartRecordsBtn  = RadioButton("Number of records").apply   { toggleGroup = limitGroup; userData = ConsumeLimit.PER_PARTITION_RECORD_COUNT }
     private val limitPartBytesBtn    = RadioButton("Max size (bytes)").apply    { toggleGroup = limitGroup; userData = ConsumeLimit.PER_PARTITION_MAX_BYTES }
+    private val limitRecordsField     = TextField("500").apply     { promptText = "records"; isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val limitDateField        = TextField().apply          { promptText = "2024-01-15 10:30:00"; isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val limitBytesField       = TextField("1048576").apply { promptText = "bytes";   isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val limitPartRecordsField = TextField("100").apply     { promptText = "records"; isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val limitPartBytesField   = TextField("1048576").apply { promptText = "bytes";   isDisable = true; maxWidth = Double.MAX_VALUE }
 
-    private val limitRecordsField     = TextField("500").apply    { promptText = "records";   isDisable = true; maxWidth = Double.MAX_VALUE }
-    private val limitDateField        = TextField().apply         { promptText = "2024-01-15 10:30:00"; isDisable = true; maxWidth = Double.MAX_VALUE }
-    private val limitBytesField       = TextField("1048576").apply { promptText = "bytes";    isDisable = true; maxWidth = Double.MAX_VALUE }
-    private val limitPartRecordsField = TextField("100").apply    { promptText = "records";   isDisable = true; maxWidth = Double.MAX_VALUE }
-    private val limitPartBytesField   = TextField("1048576").apply { promptText = "bytes";    isDisable = true; maxWidth = Double.MAX_VALUE }
-
-    private val filterField = TextField().apply { promptText = "Filter key or value…"; maxWidth = Double.MAX_VALUE }
     private val actionBtn = Button("Start", FontIcon(FontAwesomeSolid.PLAY_CIRCLE)).apply {
-        styleClass.add("accent")
-        minWidth = 100.0
+        styleClass.add("accent"); minWidth = 100.0
     }
 
     // ── Message data ─────────────────────────────────────────────────────────
@@ -72,15 +81,15 @@ class MessageBrowserView(
 
     // ── Simple view ──────────────────────────────────────────────────────────
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
+    private val monospaceFont = SimpleBooleanProperty(false)
     private val simpleList = ListView(messageItems).apply {
         setCellFactory { SimpleMessageCell(formatter, monospaceFont) }
+        fixedCellSize = 110.0   // fixed height bypasses the prefHeight(-1) measurement
         placeholder = Label("No messages. Configure settings and click Start Consuming.")
     }
 
     // ── Table view ───────────────────────────────────────────────────────────
     private val messageTable = TableView(messageItems)
-
-    // Column visibility (all enabled by default)
     private val colVisible = linkedMapOf(
         "Topic"     to SimpleBooleanProperty(true),
         "Partition" to SimpleBooleanProperty(true),
@@ -105,25 +114,132 @@ class MessageBrowserView(
     private val viewToggleBtn = ToggleButton(null, FontIcon(FontAwesomeSolid.COLUMNS)).apply {
         tooltip = Tooltip("Toggle table view")
     }
-    private val monospaceFont = SimpleBooleanProperty(false)
     private val fontToggleBtn = ToggleButton("Mono").apply {
         tooltip = Tooltip("Toggle monospace font")
     }
     private val columnsBtn = Button("Columns ▾").apply { isVisible = false; isManaged = false }
+
+    // ── Collapse button ───────────────────────────────────────────────────────
+    private var leftCollapsed = false
+    private val collapseBtn = Button(null, FontIcon(FontAwesomeSolid.CHEVRON_LEFT)).apply {
+        tooltip = Tooltip("Hide settings panel")
+        styleClass.add("flat")
+    }
 
     // ── Content container ────────────────────────────────────────────────────
     private val contentStack = StackPane(simpleList, messageTable)
 
     private var consumerService: KafkaConsumerService? = null
 
+    // Left panel reference — set in buildLeftPanel(), used for collapse and disable
+    private lateinit var leftPanel: VBox
+    private lateinit var topicSection: VBox
+    private lateinit var settingsTabs: TabPane
+
     init {
         setupMessageTable()
         setupViewToggle()
         setupColumnsMenu()
         wireEvents()
-        root.items.addAll(buildLeftPanel(), buildRightPanel())
-        root.setDividerPositions(0.27)
-        root.orientation = Orientation.HORIZONTAL
+        leftPanel = buildLeftPanel()
+        root.left   = leftPanel
+        root.center = buildRightPanel()
+        setupTopicCombo()
+        collapseBtn.setOnAction { toggleLeftPanel() }
+    }
+
+    // ── Left panel collapse ──────────────────────────────────────────────────
+
+    private fun toggleLeftPanel() {
+        leftCollapsed = !leftCollapsed
+        leftPanel.isVisible = !leftCollapsed
+        leftPanel.isManaged = !leftCollapsed
+        collapseBtn.graphic = FontIcon(
+            if (leftCollapsed) FontAwesomeSolid.CHEVRON_RIGHT else FontAwesomeSolid.CHEVRON_LEFT
+        )
+        collapseBtn.tooltip = Tooltip(
+            if (leftCollapsed) "Show settings panel" else "Hide settings panel"
+        )
+    }
+
+    private fun collapseLeftPanel() {
+        if (!leftCollapsed) toggleLeftPanel()
+    }
+
+    // ── Disable / enable controls during consumption ─────────────────────────
+
+    private fun setControlsDisabled(disabled: Boolean) {
+        topicCombo.isDisable  = disabled
+        keyDeserBox.isDisable = disabled
+        valueDeserBox.isDisable = disabled
+        fromLatest.isDisable   = disabled
+        fromEarliest.isDisable = disabled
+        fromOffset.isDisable   = disabled
+        fromDatetime.isDisable = disabled
+        fromGroup_.isDisable   = disabled
+        limitNoneBtn.isDisable        = disabled
+        limitRecordsBtn.isDisable     = disabled
+        limitDateBtn.isDisable        = disabled
+        limitBytesBtn.isDisable       = disabled
+        limitPartRecordsBtn.isDisable = disabled
+        limitPartBytesBtn.isDisable   = disabled
+
+        if (disabled) {
+            // Disable all conditional input fields too
+            specificOffsetField.isDisable   = true
+            specificDateField.isDisable     = true
+            consumerGroupField.isDisable    = true
+            limitRecordsField.isDisable     = true
+            limitDateField.isDisable        = true
+            limitBytesField.isDisable       = true
+            limitPartRecordsField.isDisable = true
+            limitPartBytesField.isDisable   = true
+        } else {
+            // Re-apply conditional disables from current toggle state
+            val fromSel  = fromGroup.selectedToggle?.userData  as? ConsumeFrom
+            specificOffsetField.isDisable = fromSel != ConsumeFrom.SPECIFIC_OFFSET
+            specificDateField.isDisable   = fromSel != ConsumeFrom.SPECIFIC_DATETIME
+            consumerGroupField.isDisable  = fromSel != ConsumeFrom.CONSUMER_GROUP
+
+            val limitSel = limitGroup.selectedToggle?.userData as? ConsumeLimit
+            limitRecordsField.isDisable     = limitSel != ConsumeLimit.RECORD_COUNT
+            limitDateField.isDisable        = limitSel != ConsumeLimit.SPECIFIC_DATE
+            limitBytesField.isDisable       = limitSel != ConsumeLimit.MAX_BYTES
+            limitPartRecordsField.isDisable = limitSel != ConsumeLimit.PER_PARTITION_RECORD_COUNT
+            limitPartBytesField.isDisable   = limitSel != ConsumeLimit.PER_PARTITION_MAX_BYTES
+        }
+
+        // While consuming the collapse button is hidden so the user cannot expand the
+        // settings panel mid-run. Re-enabling restores the button and brings the panel back.
+        collapseBtn.isVisible = !disabled
+        collapseBtn.isManaged = !disabled
+        if (!disabled) expandLeftPanel()
+    }
+
+    private fun expandLeftPanel() {
+        if (leftCollapsed) toggleLeftPanel()
+    }
+
+    // ── Topic combo setup ────────────────────────────────────────────────────
+
+    private fun setupTopicCombo() {
+        topicCombo.valueProperty().addListener { _, _, newValue ->
+            if (!newValue.isNullOrBlank())
+                setWindowTitle("Consume from Topic: $newValue  [${cluster.name}]")
+        }
+        if (topicName.isNotBlank())
+            setWindowTitle("Consume from Topic: $topicName  [${cluster.name}]")
+
+        Thread {
+            try {
+                val names = adminService.listTopics().map { it.name }.sorted()
+                Platform.runLater {
+                    topicCombo.items.setAll(names)
+                    if (topicCombo.value.isNullOrBlank() && names.isNotEmpty())
+                        topicCombo.value = names.first()
+                }
+            } catch (_: Exception) { }
+        }.also { it.isDaemon = true }.start()
     }
 
     // ── Setup ────────────────────────────────────────────────────────────────
@@ -133,8 +249,8 @@ class MessageBrowserView(
         messageTable.isManaged = false
 
         viewToggleBtn.selectedProperty().addListener { _, _, tableMode ->
-            simpleList.isVisible = !tableMode
-            simpleList.isManaged = !tableMode
+            simpleList.isVisible  = !tableMode
+            simpleList.isManaged  = !tableMode
             messageTable.isVisible = tableMode
             messageTable.isManaged = tableMode
             columnsBtn.isVisible = tableMode
@@ -142,13 +258,13 @@ class MessageBrowserView(
             fontToggleBtn.isVisible = !tableMode
             fontToggleBtn.isManaged = !tableMode
             if (tableMode) viewToggleBtn.styleClass.add("accent")
-            else viewToggleBtn.styleClass.remove("accent")
+            else           viewToggleBtn.styleClass.remove("accent")
         }
 
         fontToggleBtn.selectedProperty().bindBidirectional(monospaceFont)
         monospaceFont.addListener { _, _, _ ->
             if (monospaceFont.get()) fontToggleBtn.styleClass.add("accent")
-            else fontToggleBtn.styleClass.remove("accent")
+            else                    fontToggleBtn.styleClass.remove("accent")
             simpleList.refresh()
         }
     }
@@ -203,26 +319,29 @@ class MessageBrowserView(
 
     // ── Layout ───────────────────────────────────────────────────────────────
 
+    private fun sectionLabel(text: String) = Label(text).apply { styleClass.add("config-section-label") }
+
+    private fun tabScrollPane(content: VBox): ScrollPane = ScrollPane(content).apply {
+        isFitToWidth = true
+        vbarPolicy = ScrollPane.ScrollBarPolicy.AS_NEEDED
+        hbarPolicy = ScrollPane.ScrollBarPolicy.NEVER
+        style = "-fx-background-color: transparent; -fx-background: transparent;"
+    }
+
     private fun limitRow(radio: RadioButton, field: TextField) = HBox(6.0, radio, field).apply {
         alignment = Pos.CENTER_LEFT
         HBox.setHgrow(field, Priority.ALWAYS)
     }
 
-    private fun buildLeftPanel(): ScrollPane {
-        fun sectionLabel(text: String) = Label(text).apply { styleClass.add("config-section-label") }
+    private fun buildFormatTab(): Tab {
         fun row(vararg nodes: javafx.scene.Node) = HBox(4.0, *nodes).apply { alignment = Pos.CENTER_LEFT }
 
         val content = VBox(8.0).apply {
             padding = Insets(12.0)
             children.addAll(
-                sectionLabel("TOPIC"),
-                topicField,
-
-                Separator(),
                 sectionLabel("FORMAT"),
-                row(Label("Key:").apply { minWidth = 44.0 }, keyDeserBox).also { HBox.setHgrow(keyDeserBox, Priority.ALWAYS) },
+                row(Label("Key:").apply { minWidth = 44.0 }, keyDeserBox).also   { HBox.setHgrow(keyDeserBox,   Priority.ALWAYS) },
                 row(Label("Value:").apply { minWidth = 44.0 }, valueDeserBox).also { HBox.setHgrow(valueDeserBox, Priority.ALWAYS) },
-
                 Separator(),
                 sectionLabel("START FROM"),
                 fromLatest,
@@ -232,33 +351,62 @@ class MessageBrowserView(
                 fromDatetime,
                 specificDateField,
                 fromGroup_,
-                consumerGroupField,
+                consumerGroupField
+            )
+        }
+        return Tab("Format", tabScrollPane(content))
+    }
 
-                Separator(),
+    private fun buildFilterTab(): Tab {
+        val descLabel = Label("Show only messages whose key or value contains the filter text (case-insensitive).").apply {
+            isWrapText = true
+            style = "-fx-text-fill: -color-fg-muted; -fx-font-size: 11px;"
+        }
+        val content = VBox(8.0).apply {
+            padding = Insets(12.0)
+            children.addAll(sectionLabel("FILTER"), filterField, descLabel)
+        }
+        return Tab("Filter", tabScrollPane(content))
+    }
+
+    private fun buildAdvancedTab(): Tab {
+        val content = VBox(8.0).apply {
+            padding = Insets(12.0)
+            children.addAll(
                 sectionLabel("LIMIT"),
                 limitNoneBtn,
                 limitRow(limitRecordsBtn, limitRecordsField),
-                limitRow(limitDateBtn, limitDateField),
-                limitRow(limitBytesBtn, limitBytesField),
+                limitRow(limitDateBtn,    limitDateField),
+                limitRow(limitBytesBtn,   limitBytesField),
                 Label("For each partition").apply {
                     style = "-fx-text-fill: -color-fg-muted; -fx-font-size: 11px; -fx-padding: 4 0 0 0;"
                 },
                 limitRow(limitPartRecordsBtn, limitPartRecordsField),
-                limitRow(limitPartBytesBtn, limitPartBytesField),
-
-                Separator(),
-                sectionLabel("FILTER"),
-                filterField,
-
+                limitRow(limitPartBytesBtn,   limitPartBytesField)
             )
         }
+        return Tab("Advanced", tabScrollPane(content))
+    }
 
-        return ScrollPane(content).apply {
-            isFitToWidth = true
-            vbarPolicy = ScrollPane.ScrollBarPolicy.AS_NEEDED
-            hbarPolicy = ScrollPane.ScrollBarPolicy.NEVER
-            style = "-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-width: 0 1 0 0;"
-            prefWidth = 260.0
+    private fun buildLeftPanel(): VBox {
+        topicSection = VBox(6.0).apply {
+            padding = Insets(12.0, 12.0, 10.0, 12.0)
+            children.addAll(sectionLabel("TOPIC"), topicCombo)
+        }
+
+        settingsTabs = TabPane().apply {
+            tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
+            tabs.addAll(buildFormatTab(), buildFilterTab(), buildAdvancedTab())
+        }
+        VBox.setVgrow(settingsTabs, Priority.ALWAYS)
+
+        return VBox(topicSection, Separator(), settingsTabs).apply {
+            style = "-fx-background-color: -color-bg-subtle;" +
+                    "-fx-border-color: -color-border-default; -fx-border-width: 0 1 0 0;"
+            // Fixed width — not resizable by dragging
+            prefWidth = 280.0
+            minWidth  = 280.0
+            maxWidth  = 280.0
         }
     }
 
@@ -268,6 +416,7 @@ class MessageBrowserView(
             alignment = Pos.CENTER_LEFT
             styleClass.add("message-toolbar")
             children.addAll(
+                collapseBtn,
                 progressIndicator,
                 statusLabel,
                 Region().apply { HBox.setHgrow(this, Priority.ALWAYS) },
@@ -312,11 +461,11 @@ class MessageBrowserView(
         }
 
         val limitFieldMap = mapOf(
-            ConsumeLimit.RECORD_COUNT            to limitRecordsField,
-            ConsumeLimit.SPECIFIC_DATE           to limitDateField,
-            ConsumeLimit.MAX_BYTES               to limitBytesField,
+            ConsumeLimit.RECORD_COUNT               to limitRecordsField,
+            ConsumeLimit.SPECIFIC_DATE              to limitDateField,
+            ConsumeLimit.MAX_BYTES                  to limitBytesField,
             ConsumeLimit.PER_PARTITION_RECORD_COUNT to limitPartRecordsField,
-            ConsumeLimit.PER_PARTITION_MAX_BYTES to limitPartBytesField
+            ConsumeLimit.PER_PARTITION_MAX_BYTES    to limitPartBytesField
         )
         limitGroup.selectedToggleProperty().addListener { _, _, toggle ->
             val selected = toggle?.userData as? ConsumeLimit
@@ -331,6 +480,8 @@ class MessageBrowserView(
     }
 
     private fun currentSettings(): ConsumeSettings {
+        val topic = topicCombo.value?.trim() ?: ""
+
         val from = fromGroup.selectedToggle?.userData as? ConsumeFrom ?: ConsumeFrom.LATEST
         val fromTimestamp = if (from == ConsumeFrom.SPECIFIC_DATETIME) {
             try {
@@ -347,21 +498,21 @@ class MessageBrowserView(
                 val dt = LocalDateTime.parse(limitDateField.text.trim().replace(" ", "T"))
                 dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (_: Exception) { null }
-            ConsumeLimit.MAX_BYTES -> limitBytesField.text.trim().toLongOrNull()
+            ConsumeLimit.MAX_BYTES               -> limitBytesField.text.trim().toLongOrNull()
             ConsumeLimit.PER_PARTITION_RECORD_COUNT -> limitPartRecordsField.text.trim().toLongOrNull()
             ConsumeLimit.PER_PARTITION_MAX_BYTES -> limitPartBytesField.text.trim().toLongOrNull()
         }
 
         return ConsumeSettings(
-            topic = topicField.text.trim(),
-            from = from,
-            limit = limit,
-            limitValue = limitValue,
-            keyDeserializer = keyDeserBox.value,
+            topic            = topic,
+            from             = from,
+            limit            = limit,
+            limitValue       = limitValue,
+            keyDeserializer  = keyDeserBox.value,
             valueDeserializer = valueDeserBox.value,
-            specificOffset = specificOffsetField.text.trim().toLongOrNull(),
+            specificOffset   = specificOffsetField.text.trim().toLongOrNull(),
             specificTimestamp = fromTimestamp,
-            consumerGroup = consumerGroupField.text.trim().takeIf { it.isNotBlank() }
+            consumerGroup    = consumerGroupField.text.trim().takeIf { it.isNotBlank() }
         )
     }
 
@@ -369,19 +520,26 @@ class MessageBrowserView(
         val settings = currentSettings()
         if (settings.topic.isBlank()) { statusLabel.text = "Enter a topic name"; return }
 
+        // Warn if selected topic isn't in the known topic list
+        if (topicCombo.items.isNotEmpty() && settings.topic !in topicCombo.items) {
+            statusLabel.text = "Warning: '${settings.topic}' not found in cluster topic list"
+        }
+
         allMessages.clear(); messageItems.clear(); messageDetail.clear()
         progressIndicator.isVisible = true
         setActionBtn(running = true)
+        setControlsDisabled(true)
+        collapseLeftPanel()            // auto-collapse settings when consumption starts
         statusLabel.text = "Consuming from ${settings.topic}…"
-        countLabel.text = ""
+        countLabel.text  = ""
 
         val svc = KafkaConsumerService(cluster)
         consumerService = svc
 
         Thread {
             svc.consume(
-                settings = settings,
-                onMessage = { msg ->
+                settings   = settings,
+                onMessage  = { msg ->
                     Platform.runLater {
                         allMessages.add(msg)
                         applyFilter(filterField.text)
@@ -392,14 +550,16 @@ class MessageBrowserView(
                     Platform.runLater {
                         progressIndicator.isVisible = false
                         setActionBtn(running = false)
+                        setControlsDisabled(false)
                         statusLabel.text = "Done — ${allMessages.size} messages"
                         setStatus("Consumed ${allMessages.size} messages from ${settings.topic}")
                     }
                 },
-                onError = { e ->
+                onError    = { e ->
                     Platform.runLater {
                         progressIndicator.isVisible = false
                         setActionBtn(running = false)
+                        setControlsDisabled(false)
                         statusLabel.text = "Error: ${e.message}"
                     }
                 }
@@ -411,6 +571,7 @@ class MessageBrowserView(
         consumerService?.stopConsuming()
         progressIndicator.isVisible = false
         setActionBtn(running = false)
+        setControlsDisabled(false)
         statusLabel.text = "Stopped"
     }
 

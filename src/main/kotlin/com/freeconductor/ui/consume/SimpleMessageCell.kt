@@ -7,6 +7,7 @@ import javafx.geometry.Pos
 import javafx.scene.control.Label
 import javafx.scene.control.ListCell
 import javafx.scene.layout.HBox
+import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -18,34 +19,51 @@ class SimpleMessageCell(
 
     private val metaLabel = Label()
     private val keyLabel  = Label()
-    private val row1 = HBox(8.0, metaLabel, keyLabel).apply { alignment = Pos.CENTER_LEFT }
-    private val valueLabel = Label().apply { isWrapText = false }
+    private val row1 = HBox(8.0, metaLabel, keyLabel).apply {
+        alignment = Pos.CENTER_LEFT
+        HBox.setHgrow(keyLabel, Priority.NEVER)
+    }
+
+    // isWrapText works here because the ListView uses fixedCellSize, which means
+    // cell sizing goes through resize(w, h) rather than prefHeight(-1).  The label
+    // therefore receives a real width and wraps correctly.
+    private val valueLabel = Label().apply {
+        isWrapText = true
+        maxWidth   = Double.MAX_VALUE
+    }
+
     private val box = VBox(2.0, row1, valueLabel).apply {
         padding = Insets(6.0, 8.0, 6.0, 8.0)
+        VBox.setVgrow(valueLabel, Priority.ALWAYS)
+    }
+
+    init {
+        prefWidth = 0.0
     }
 
     override fun updateItem(msg: MessageRecord?, empty: Boolean) {
         super.updateItem(msg, empty)
         if (empty || msg == null) {
             graphic = null
-            text = null
+            text    = null
             return
         }
 
-        val mono = monospaceFont.get()
+        val mono       = monospaceFont.get()
         val baseFont   = if (mono) "-fx-font-family: monospace;" else ""
-        val mutedStyle = "$baseFont -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted;"
-        val keyStyle   = "$baseFont -fx-font-size: 12px;"
-        val valueStyle = "$baseFont -fx-font-size: 12px;"
+        val mutedStyle = "$baseFont-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted;"
+        val keyStyle   = "$baseFont-fx-font-size: 12px;"
+        val valueStyle = "$baseFont-fx-font-size: 12px;"
 
-        metaLabel.style = mutedStyle
-        keyLabel.style  = keyStyle
+        metaLabel.style  = mutedStyle
+        keyLabel.style   = keyStyle
         valueLabel.style = valueStyle
 
-        metaLabel.text = "${formatter.format(Instant.ofEpochMilli(msg.timestamp))}  (P:${msg.partition}  #${msg.offset})"
+        metaLabel.text = "${formatter.format(Instant.ofEpochMilli(msg.timestamp))}  " +
+                         "(P:${msg.partition}  #${msg.offset})"
 
         if (msg.key != null) {
-            keyLabel.text = msg.key
+            keyLabel.text      = msg.key
             keyLabel.isVisible = true
             keyLabel.isManaged = true
         } else {
@@ -53,11 +71,12 @@ class SimpleMessageCell(
             keyLabel.isManaged = false
         }
 
-        val raw = msg.value ?: "(null)"
-        val preview = raw.replace('\n', ' ').replace('\r', ' ')
-        valueLabel.text = if (preview.length > 200) preview.substring(0, 200) + "…" else preview
+        // Collapse internal newlines so the value flows as a single paragraph.
+        // Cap at 2000 chars to avoid rendering huge payloads.
+        val raw = (msg.value ?: "(null)").replace('\n', ' ').replace('\r', ' ')
+        valueLabel.text = raw.take(2000)
 
         graphic = box
-        text = null
+        text    = null
     }
 }

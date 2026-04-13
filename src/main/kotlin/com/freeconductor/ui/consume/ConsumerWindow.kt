@@ -12,12 +12,18 @@ class ConsumerWindow(
     private val setMainStatus: (String) -> Unit = {}
 ) {
     private val stage = Stage()
-    private val view = MessageBrowserView(topicName, cluster, adminService, setMainStatus)
+    private val view = MessageBrowserView(
+        topicName      = topicName,
+        cluster        = cluster,
+        adminService   = adminService,
+        setStatus      = setMainStatus,
+        setWindowTitle = { stage.title = it }
+    )
 
     init {
-        val scene = Scene(view.root, 1200.0, 740.0)
+        val scene = Scene(view.root, 1000.0, 740.0)
         stage.title = if (topicName.isBlank()) "Consumer  [${cluster.name}]"
-                      else "Consumer — $topicName  [${cluster.name}]"
+                      else "Consume from Topic: $topicName  [${cluster.name}]"
         ConsumerWindow::class.java
             .getResourceAsStream("/com/freeconductor/icons/free-conduktor-logo-32.png")
             ?.let { stage.icons.add(javafx.scene.image.Image(it)) }

@@ -22,6 +22,8 @@ class App : Application() {
             }
         stage.title = "FreeConduktor"
         stage.scene = scene
+        // Close all windows (including open Consumer windows) when the main window is closed
+        stage.setOnCloseRequest { javafx.application.Platform.exit() }
         stage.show()
     }
 }

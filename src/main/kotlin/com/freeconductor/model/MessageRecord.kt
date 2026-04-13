@@ -16,16 +16,18 @@ data class MessageRecord(
     val timestampInstant: Instant get() = Instant.ofEpochMilli(timestamp)
 }
 
-enum class Deserializer {
-    STRING,
-    INTEGER,
-    LONG,
-    FLOAT,
-    DOUBLE,
-    JSON,
-    BASE64,
-    AVRO_EMBEDDED,
-    NONE
+enum class Deserializer(val displayName: String) {
+    JSON("JSON"),
+    STRING("String"),
+    BASE64("Bytes (Base64)"),
+    AVRO_EMBEDDED("Avro (embedded)"),
+    FLOAT("Float"),
+    DOUBLE("Double"),
+    INTEGER("Int"),
+    LONG("Long"),
+    NONE("None (ignore)");
+
+    override fun toString() = displayName
 }
 
 enum class ConsumeFrom {

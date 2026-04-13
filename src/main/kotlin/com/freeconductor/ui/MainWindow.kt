@@ -187,7 +187,7 @@ class MainWindow(private val stage: Stage) {
                     setOnAction {
                         Alert(Alert.AlertType.INFORMATION).apply {
                             title = "About"; headerText = "FreeConduktor"
-                            contentText = "Kafka Management GUI\nVersion 0.1.0\n\nVibe coded by Claude (Sonnet 4.6)"
+                            contentText = "Kafka Management GUI\nVersion 0.1.1\n\nVibe coded by Claude (Sonnet 4.6)"
                             showAndWait()
                         }
                     }
