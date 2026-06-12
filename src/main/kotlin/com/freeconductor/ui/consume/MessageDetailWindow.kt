@@ -1,74 +1,34 @@
 package com.freeconductor.ui.consume
 
 import com.freeconductor.model.MessageRecord
+import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Insets
 import javafx.geometry.Pos
+import javafx.scene.Node
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
 import javafx.scene.layout.*
+import javafx.stage.FileChooser
 import javafx.stage.Stage
-import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
     private val stage = Stage()
 
     init {
-        val metaText = buildString {
-            appendLine("Topic:     ${msg.topic}")
-            appendLine("Partition: ${msg.partition}    Offset: ${msg.offset}")
-            appendLine("Timestamp: ${formatter.format(Instant.ofEpochMilli(msg.timestamp))}")
-            append("Key size:  ${msg.keySize} bytes    Value size: ${msg.valueSize} bytes")
-            if (msg.headers.isNotEmpty()) {
-                appendLine(); appendLine()
-                appendLine("Headers:")
-                msg.headers.forEach { (k, v) -> appendLine("  $k: $v") }
-            }
+        val tabPane = TabPane().apply {
+            tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
+            tabs.addAll(buildDataTab(msg), buildMetadataTab(msg, formatter))
         }
+        VBox.setVgrow(tabPane, Priority.ALWAYS)
 
-        val metaArea = TextArea(metaText).apply {
-            isEditable = false
-            isWrapText = false
-            styleClass.add("code-area")
-            prefHeight = if (msg.headers.isNotEmpty()) 120.0 else 80.0
-            maxHeight = prefHeight
-        }
+        val root = VBox(tabPane, buildBottomBar(msg, formatter))
+        VBox.setVgrow(tabPane, Priority.ALWAYS)
 
-        val keyArea = TextArea(msg.key ?: "(null)").apply {
-            isEditable = false
-            isWrapText = true
-            styleClass.add("code-area")
-            prefHeight = 100.0
-        }
-
-        val valueArea = TextArea(msg.value ?: "(null)").apply {
-            isEditable = false
-            isWrapText = true
-            styleClass.add("code-area")
-            VBox.setVgrow(this, Priority.ALWAYS)
-        }
-
-        fun sectionLabel(text: String) = Label(text).apply { styleClass.add("config-section-label") }
-
-        val content = VBox(8.0).apply {
-            padding = Insets(12.0, 12.0, 8.0, 12.0)
-            VBox.setVgrow(this, Priority.ALWAYS)
-            children.addAll(
-                sectionLabel("METADATA"), metaArea,
-                sectionLabel("KEY"),      keyArea,
-                sectionLabel("VALUE"),    valueArea
-            )
-        }
-
-        val bottomBar = buildBottomBar(msg, formatter)
-
-        val root = VBox(content, bottomBar)
-        VBox.setVgrow(content, Priority.ALWAYS)
-
-        val scene = Scene(root, 640.0, 560.0)
+        val scene = Scene(root, 680.0, 580.0)
         scene.stylesheets.add(
             MessageDetailWindow::class.java.getResource("/com/freeconductor/styles.css")!!.toExternalForm()
         )
@@ -80,6 +40,80 @@ class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
         stage.scene = scene
     }
 
+    private fun buildDataTab(msg: MessageRecord): Tab {
+        fun label(text: String) = Label(text).apply { styleClass.add("config-section-label") }
+
+        val keyArea = TextArea(msg.key ?: "(null)").apply {
+            isEditable = false; isWrapText = true
+            styleClass.add("code-area"); prefHeight = 90.0; maxHeight = 90.0
+        }
+
+        val valueArea = TextArea(msg.value ?: "(null)").apply {
+            isEditable = false; isWrapText = true
+            styleClass.add("code-area")
+            VBox.setVgrow(this, Priority.ALWAYS)
+        }
+
+        val headerNode: Node = if (msg.headers.isEmpty()) {
+            Label("No headers").apply {
+                style = "-fx-text-fill: -color-fg-muted; -fx-padding: 4 0 0 0;"
+            }
+        } else {
+            TableView<Map.Entry<String, String>>().apply {
+                items.addAll(msg.headers.entries)
+                prefHeight = 120.0; maxHeight = 120.0
+                columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+                columns.addAll(
+                    TableColumn<Map.Entry<String, String>, String>("Header").apply {
+                        setCellValueFactory { SimpleStringProperty(it.value.key) }
+                    },
+                    TableColumn<Map.Entry<String, String>, String>("Value").apply {
+                        setCellValueFactory { SimpleStringProperty(it.value.value) }
+                    }
+                )
+            }
+        }
+
+        val content = VBox(8.0).apply {
+            padding = Insets(12.0)
+            VBox.setVgrow(this, Priority.ALWAYS)
+            children.addAll(label("KEY"), keyArea, label("VALUE"), valueArea, label("HEADERS"), headerNode)
+        }
+        VBox.setVgrow(valueArea, Priority.ALWAYS)
+
+        return Tab("Data", content)
+    }
+
+    private fun buildMetadataTab(msg: MessageRecord, formatter: DateTimeFormatter): Tab {
+        val grid = GridPane().apply {
+            hgap = 16.0; vgap = 12.0
+            padding = Insets(16.0)
+            columnConstraints.addAll(
+                ColumnConstraints(110.0, 130.0, 160.0),
+                ColumnConstraints().also { it.hgrow = Priority.ALWAYS; it.isFillWidth = true }
+            )
+        }
+
+        fun row(rowIdx: Int, label: String, value: String) {
+            grid.add(Label(label).apply {
+                style = "-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"
+            }, 0, rowIdx)
+            grid.add(Label(value).apply {
+                isWrapText = true; style = "-fx-font-size: 12px;"
+            }, 1, rowIdx)
+        }
+
+        row(0, "Topic",          msg.topic)
+        row(1, "Partition",      msg.partition.toString())
+        row(2, "Offset",         msg.offset.toString())
+        row(3, "Timestamp",      "${formatter.format(msg.timestampInstant)} (epoch: ${msg.timestamp})")
+        row(4, "Timestamp Type", msg.timestampType)
+        row(5, "Key Size",       formatSize(msg.keySize))
+        row(6, "Value Size",     formatSize(msg.valueSize))
+
+        return Tab("Metadata", grid)
+    }
+
     private fun buildBottomBar(msg: MessageRecord, formatter: DateTimeFormatter): HBox {
         val copyToProducerBtn = Button("Copy to a Producer Template").apply {
             tooltip = Tooltip("Producer window coming soon")
@@ -89,18 +123,14 @@ class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
         val copyBtn = SplitMenuButton().apply {
             text = "Copy"
             styleClass.add("accent")
-            setOnAction { putOnClipboard(msg.value ?: "") }
+            setOnAction { saveAsFile(msg, formatter) }
             items.addAll(
-                MenuItem("Copy Value").apply        { setOnAction { putOnClipboard(msg.value ?: "") } },
-                MenuItem("Copy Key").apply          { setOnAction { putOnClipboard(msg.key ?: "") } },
-                MenuItem("Copy Key & Value").apply  { setOnAction { putOnClipboard(buildKeyValue(msg)) } },
-                MenuItem("Copy as JSON").apply      { setOnAction { putOnClipboard(buildJson(msg, formatter)) } }
+                MenuItem("Save As…").apply          { setOnAction { saveAsFile(msg, formatter) } },
+                MenuItem("Copy to Clipboard").apply { setOnAction { putOnClipboard(buildFullText(msg, formatter)) } }
             )
         }
 
-        val closeBtn = Button("Close").apply {
-            setOnAction { stage.close() }
-        }
+        val closeBtn = Button("Close").apply { setOnAction { stage.close() } }
 
         return HBox(8.0).apply {
             padding = Insets(8.0, 12.0, 10.0, 12.0)
@@ -115,34 +145,49 @@ class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
         }
     }
 
+    private fun saveAsFile(msg: MessageRecord, formatter: DateTimeFormatter) {
+        val fc = FileChooser().apply {
+            title = "Save Message"
+            initialFileName = "${msg.topic}_p${msg.partition}_o${msg.offset}.txt"
+            extensionFilters.addAll(
+                FileChooser.ExtensionFilter("Text files (*.txt)", "*.txt"),
+                FileChooser.ExtensionFilter("All files (*.*)", "*.*")
+            )
+        }
+        fc.showSaveDialog(stage)?.writeText(buildFullText(msg, formatter))
+    }
+
     private fun putOnClipboard(text: String) {
         Clipboard.getSystemClipboard().setContent(ClipboardContent().also { it.putString(text) })
     }
 
-    private fun buildKeyValue(msg: MessageRecord) = buildString {
-        appendLine("Key:   ${msg.key ?: "(null)"}")
-        append("Value: ${msg.value ?: "(null)"}")
-    }
-
-    private fun buildJson(msg: MessageRecord, formatter: DateTimeFormatter) = buildString {
-        appendLine("{")
-        appendLine("  \"topic\": \"${msg.topic}\",")
-        appendLine("  \"partition\": ${msg.partition},")
-        appendLine("  \"offset\": ${msg.offset},")
-        appendLine("  \"timestamp\": \"${formatter.format(Instant.ofEpochMilli(msg.timestamp))}\",")
-        appendLine("  \"key\": ${jsonString(msg.key)},")
-        appendLine("  \"value\": ${jsonString(msg.value)},")
-        appendLine("  \"headers\": {")
-        msg.headers.entries.forEachIndexed { i, (k, v) ->
-            val comma = if (i < msg.headers.size - 1) "," else ""
-            appendLine("    ${jsonString(k)}: ${jsonString(v)}$comma")
+    private fun buildFullText(msg: MessageRecord, formatter: DateTimeFormatter) = buildString {
+        appendLine("Topic:          ${msg.topic}")
+        appendLine("Partition:      ${msg.partition}")
+        appendLine("Offset:         ${msg.offset}")
+        appendLine("Timestamp:      ${formatter.format(msg.timestampInstant)} (epoch: ${msg.timestamp})")
+        appendLine("Timestamp Type: ${msg.timestampType}")
+        appendLine("Key Size:       ${formatSize(msg.keySize)}")
+        appendLine("Value Size:     ${formatSize(msg.valueSize)}")
+        if (msg.headers.isNotEmpty()) {
+            appendLine()
+            appendLine("--- Headers ---")
+            msg.headers.forEach { (k, v) -> appendLine("$k: $v") }
         }
-        appendLine("  }")
-        append("}")
+        appendLine()
+        appendLine("--- Key ---")
+        appendLine(msg.key ?: "(null)")
+        appendLine()
+        appendLine("--- Value ---")
+        append(msg.value ?: "(null)")
     }
 
-    private fun jsonString(s: String?) =
-        if (s == null) "null" else "\"${s.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    private fun formatSize(bytes: Int) = when {
+        bytes == 0   -> "0 B"
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
+        else         -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+    }
 
     fun show() {
         stage.show()
