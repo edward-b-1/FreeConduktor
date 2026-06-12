@@ -1,21 +1,21 @@
 /* ── Fonts ── */
 @font-face {
-    src: url("/com/freeconductor/fonts/Roboto-Regular.ttf");
-    -fx-font-family: "Roboto";
+    src: url("fonts/Roboto-Regular.ttf");
+    font-family: "Roboto";
 }
 @font-face {
-    src: url("/com/freeconductor/fonts/Roboto-Bold.ttf");
-    -fx-font-family: "Roboto";
-    -fx-font-weight: bold;
+    src: url("fonts/Roboto-Bold.ttf");
+    font-family: "Roboto";
+    font-weight: bold;
 }
 @font-face {
-    src: url("/com/freeconductor/fonts/Roboto-Medium.ttf");
-    -fx-font-family: "Roboto";
-    -fx-font-weight: 500;
+    src: url("fonts/Roboto-Medium.ttf");
+    font-family: "Roboto";
+    font-weight: 500;
 }
 @font-face {
-    src: url("/com/freeconductor/fonts/RobotoMono-Regular.ttf");
-    -fx-font-family: "Roboto Mono";
+    src: url("fonts/RobotoMono-Regular.ttf");
+    font-family: "Roboto Mono";
 }
 
 .root { -fx-font-family: "Roboto"; }
@@ -295,6 +295,12 @@
     -fx-background-color: -color-bg-subtle;
     -fx-border-color: -color-border-default;
     -fx-border-width: 0 0 1 0;
+}
+.radio-button {
+    -fx-background-color: transparent;
+}
+.check-box {
+    -fx-background-color: transparent;
 }
 
 /* ── Tables ── */

@@ -8,7 +8,6 @@ import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.geometry.Insets
-import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.geometry.Side
 import javafx.scene.control.*
@@ -46,7 +45,7 @@ class MessageBrowserView(
     }
     private val fromGroup    = ToggleGroup()
     private val fromLatest   = RadioButton("Latest (new messages)").apply { toggleGroup = fromGroup; isSelected = true; userData = ConsumeFrom.LATEST }
-    private val fromEarliest = RadioButton("Earliest").apply { toggleGroup = fromGroup; userData = ConsumeFrom.EARLIEST }
+    private val fromEarliest = RadioButton("From beginning (earliest)").apply { toggleGroup = fromGroup; userData = ConsumeFrom.EARLIEST }
     private val fromOffset   = RadioButton("Specific offset").apply { toggleGroup = fromGroup; userData = ConsumeFrom.SPECIFIC_OFFSET }
     private val fromDatetime = RadioButton("Specific datetime").apply { toggleGroup = fromGroup; userData = ConsumeFrom.SPECIFIC_DATETIME }
     private val fromGroup_   = RadioButton("Consumer group").apply { toggleGroup = fromGroup; userData = ConsumeFrom.CONSUMER_GROUP }
@@ -59,13 +58,13 @@ class MessageBrowserView(
 
     // ── Limit controls ───────────────────────────────────────────────────────
     private val limitGroup           = ToggleGroup()
-    private val limitNoneBtn         = RadioButton("None (forever)").apply      { toggleGroup = limitGroup; isSelected = true; userData = ConsumeLimit.NONE }
-    private val limitRecordsBtn      = RadioButton("Number of records").apply   { toggleGroup = limitGroup; userData = ConsumeLimit.RECORD_COUNT }
+    private val limitRecordsBtn      = RadioButton("Number of records").apply   { toggleGroup = limitGroup; isSelected = true; userData = ConsumeLimit.RECORD_COUNT }
+    private val limitNoneBtn         = RadioButton("None (forever)").apply      { toggleGroup = limitGroup; userData = ConsumeLimit.NONE }
     private val limitDateBtn         = RadioButton("Specific date").apply       { toggleGroup = limitGroup; userData = ConsumeLimit.SPECIFIC_DATE }
     private val limitBytesBtn        = RadioButton("Max size (bytes)").apply    { toggleGroup = limitGroup; userData = ConsumeLimit.MAX_BYTES }
     private val limitPartRecordsBtn  = RadioButton("Number of records").apply   { toggleGroup = limitGroup; userData = ConsumeLimit.PER_PARTITION_RECORD_COUNT }
     private val limitPartBytesBtn    = RadioButton("Max size (bytes)").apply    { toggleGroup = limitGroup; userData = ConsumeLimit.PER_PARTITION_MAX_BYTES }
-    private val limitRecordsField     = TextField("500").apply     { promptText = "records"; isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val limitRecordsField     = TextField("500").apply     { promptText = "records"; isDisable = false; maxWidth = Double.MAX_VALUE }
     private val limitDateField        = TextField().apply          { promptText = "2024-01-15 10:30:00"; isDisable = true; maxWidth = Double.MAX_VALUE }
     private val limitBytesField       = TextField("1048576").apply { promptText = "bytes";   isDisable = true; maxWidth = Double.MAX_VALUE }
     private val limitPartRecordsField = TextField("100").apply     { promptText = "records"; isDisable = true; maxWidth = Double.MAX_VALUE }
@@ -99,13 +98,6 @@ class MessageBrowserView(
         "Value"     to SimpleBooleanProperty(true),
         "Headers"   to SimpleBooleanProperty(true)
     )
-
-    // ── Detail pane ──────────────────────────────────────────────────────────
-    private val messageDetail = TextArea().apply {
-        isEditable = false; isWrapText = true; prefHeight = 180.0
-        promptText = "Select a message to see details"
-        styleClass.add("code-area")
-    }
 
     // ── Toolbar controls ─────────────────────────────────────────────────────
     private val progressIndicator = ProgressIndicator().apply { maxWidth = 28.0; maxHeight = 28.0; isVisible = false }
@@ -312,9 +304,6 @@ class MessageBrowserView(
         messageTable.placeholder = Label("No messages. Configure settings and click Start Consuming.")
         messageTable.selectionModel.selectionMode = SelectionMode.SINGLE
         VBox.setVgrow(messageTable, Priority.ALWAYS)
-        messageTable.selectionModel.selectedItemProperty().addListener { _, _, msg ->
-            if (msg != null) showDetail(msg)
-        }
     }
 
     // ── Layout ───────────────────────────────────────────────────────────────
@@ -374,8 +363,8 @@ class MessageBrowserView(
             padding = Insets(12.0)
             children.addAll(
                 sectionLabel("LIMIT"),
-                limitNoneBtn,
                 limitRow(limitRecordsBtn, limitRecordsField),
+                limitNoneBtn,
                 limitRow(limitDateBtn,    limitDateField),
                 limitRow(limitBytesBtn,   limitBytesField),
                 Label("For each partition").apply {
@@ -427,7 +416,7 @@ class MessageBrowserView(
                 Button("Clear").apply {
                     setOnAction {
                         allMessages.clear(); messageItems.clear()
-                        messageDetail.clear(); countLabel.text = ""
+                        countLabel.text = ""
                     }
                 }
             )
@@ -435,20 +424,13 @@ class MessageBrowserView(
 
         VBox.setVgrow(contentStack, Priority.ALWAYS)
 
-        val splitPane = SplitPane().apply {
-            orientation = Orientation.VERTICAL
-            items.addAll(contentStack, messageDetail)
-            setDividerPositions(0.72)
-        }
-        VBox.setVgrow(splitPane, Priority.ALWAYS)
-
         val bottomBar = HBox(Region().apply { HBox.setHgrow(this, Priority.ALWAYS) }, actionBtn).apply {
             padding = Insets(6.0, 8.0, 6.0, 8.0)
             alignment = Pos.CENTER_RIGHT
             style = "-fx-border-color: -color-border-default; -fx-border-width: 1 0 0 0;"
         }
 
-        return VBox(toolbar, splitPane, bottomBar)
+        return VBox(toolbar, contentStack, bottomBar)
     }
 
     // ── Events ───────────────────────────────────────────────────────────────
@@ -474,8 +456,12 @@ class MessageBrowserView(
 
         filterField.textProperty().addListener { _, _, text -> applyFilter(text) }
         actionBtn.setOnAction { startConsuming() }
-        simpleList.selectionModel.selectedItemProperty().addListener { _, _, msg ->
-            if (msg != null) showDetail(msg)
+
+        simpleList.setOnMouseClicked { e ->
+            if (e.clickCount == 2) simpleList.selectionModel.selectedItem?.let { openDetail(it) }
+        }
+        messageTable.setOnMouseClicked { e ->
+            if (e.clickCount == 2) messageTable.selectionModel.selectedItem?.let { openDetail(it) }
         }
     }
 
@@ -525,7 +511,7 @@ class MessageBrowserView(
             statusLabel.text = "Warning: '${settings.topic}' not found in cluster topic list"
         }
 
-        allMessages.clear(); messageItems.clear(); messageDetail.clear()
+        allMessages.clear(); messageItems.clear()
         progressIndicator.isVisible = true
         setActionBtn(running = true)
         setControlsDisabled(true)
@@ -604,23 +590,7 @@ class MessageBrowserView(
                           else "${messageItems.size} / ${allMessages.size} messages"
     }
 
-    private fun showDetail(msg: MessageRecord) {
-        messageDetail.text = buildString {
-            appendLine("Topic:     ${msg.topic}")
-            appendLine("Partition: ${msg.partition}    Offset: ${msg.offset}")
-            appendLine("Timestamp: ${formatter.format(Instant.ofEpochMilli(msg.timestamp))}")
-            appendLine("Key size:  ${msg.keySize} bytes    Value size: ${msg.valueSize} bytes")
-            if (msg.headers.isNotEmpty()) {
-                appendLine()
-                appendLine("--- Headers ---")
-                msg.headers.forEach { (k, v) -> appendLine("$k: $v") }
-            }
-            appendLine()
-            appendLine("--- Key ---")
-            appendLine(msg.key ?: "(null)")
-            appendLine()
-            appendLine("--- Value ---")
-            appendLine(msg.value ?: "(null)")
-        }
+    private fun openDetail(msg: MessageRecord) {
+        MessageDetailWindow(msg, formatter).show()
     }
 }

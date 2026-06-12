@@ -11,7 +11,8 @@ data class MessageRecord(
     val value: String?,
     val headers: Map<String, String> = emptyMap(),
     val keySize: Int = 0,
-    val valueSize: Int = 0
+    val valueSize: Int = 0,
+    val timestampType: String = "Unknown"
 ) {
     val timestampInstant: Instant get() = Instant.ofEpochMilli(timestamp)
 }

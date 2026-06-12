@@ -22,6 +22,9 @@ class ConsumerWindow(
 
     init {
         val scene = Scene(view.root, 1000.0, 740.0)
+        scene.stylesheets.add(
+            ConsumerWindow::class.java.getResource("/com/freeconductor/styles.css")!!.toExternalForm()
+        )
         stage.title = if (topicName.isBlank()) "Consumer  [${cluster.name}]"
                       else "Consume from Topic: $topicName  [${cluster.name}]"
         ConsumerWindow::class.java

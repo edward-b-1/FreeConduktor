@@ -191,16 +191,22 @@ class KafkaConsumerService(private val clusterConfig: com.freeconductor.model.Cl
         val headers = record.headers().associate { header ->
             header.key() to (header.value()?.let { String(it) } ?: "")
         }
+        val tsType = when (record.timestampType()) {
+            org.apache.kafka.common.record.TimestampType.CREATE_TIME     -> "CreateTime"
+            org.apache.kafka.common.record.TimestampType.LOG_APPEND_TIME -> "LogAppendTime"
+            else                                                          -> "None"
+        }
         return MessageRecord(
-            topic = record.topic(),
-            partition = record.partition(),
-            offset = record.offset(),
-            timestamp = record.timestamp(),
-            key = key,
-            value = value,
-            headers = headers,
-            keySize = record.key()?.size ?: 0,
-            valueSize = record.value()?.size ?: 0
+            topic         = record.topic(),
+            partition     = record.partition(),
+            offset        = record.offset(),
+            timestamp     = record.timestamp(),
+            key           = key,
+            value         = value,
+            headers       = headers,
+            keySize       = record.key()?.size ?: 0,
+            valueSize     = record.value()?.size ?: 0,
+            timestampType = tsType
         )
     }
 
