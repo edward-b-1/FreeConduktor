@@ -9,6 +9,7 @@ import javafx.geometry.Pos
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.stage.Modality
 import javafx.stage.Stage
 import javafx.stage.Window
@@ -141,6 +142,7 @@ class DynamicConfigDialog(
         deleteBtn.setOnAction  { runAdminOp(null) }
         overrideBtn.setOnAction { runAdminOp(newValueField.text.trim()) }
 
+        stage.centerOnActiveWindow()
         stage.showAndWait()
     }
 }

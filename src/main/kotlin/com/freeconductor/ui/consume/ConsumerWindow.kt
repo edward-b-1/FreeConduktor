@@ -2,6 +2,7 @@ package com.freeconductor.ui.consume
 
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.service.KafkaAdminService
+import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.scene.Scene
 import javafx.stage.Stage
 
@@ -32,6 +33,7 @@ class ConsumerWindow(
             ?.let { stage.icons.add(javafx.scene.image.Image(it)) }
         stage.scene = scene
         stage.setOnCloseRequest { view.stopConsuming() }
+        stage.centerOnActiveWindow()
         stage.show()
     }
 

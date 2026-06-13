@@ -1,5 +1,6 @@
 package com.freeconductor.ui.consume
 
+import com.freeconductor.ui.util.centerOnActiveWindow
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.model.MessageRecord
 import com.freeconductor.ui.produce.ProducerDialog
@@ -199,6 +200,7 @@ class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter, priv
     }
 
     fun show() {
+        stage.centerOnActiveWindow()
         stage.show()
         stage.toFront()
     }

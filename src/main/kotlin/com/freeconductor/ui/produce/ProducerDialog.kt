@@ -11,6 +11,7 @@ import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.scene.input.MouseEvent
+import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import org.apache.commons.csv.CSVFormat
@@ -632,6 +633,7 @@ class ProducerDialog(
         val continueType = ButtonType("Continue", ButtonBar.ButtonData.OK_DONE)
         val topic = topicCombo.value ?: ""
         val dlg = Dialog<ButtonType>().apply {
+            initOwner(stage)
             title = "Import CSV to Topic $topic"
             dialogPane.headerText = "Template : Send to $topic"
             dialogPane.content = content
@@ -703,6 +705,7 @@ class ProducerDialog(
     }
 
     fun show() {
+        stage.centerOnActiveWindow()
         stage.show()
         stage.toFront()
     }

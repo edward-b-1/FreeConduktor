@@ -6,15 +6,19 @@ import javafx.scene.control.ButtonType
 import javafx.scene.control.TextArea
 import javafx.scene.layout.GridPane
 import javafx.scene.layout.Priority
+import javafx.stage.Window
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.Optional
 
 object AlertUtils {
 
+    private fun focusedWindow() = Window.getWindows().find { it.isFocused }
+
     fun showError(title: String, message: String, exception: Exception? = null) {
         Platform.runLater {
             val alert = Alert(Alert.AlertType.ERROR)
+            alert.initOwner(focusedWindow())
             alert.title = title
             alert.headerText = message
 
@@ -44,6 +48,7 @@ object AlertUtils {
     fun showInfo(title: String, message: String) {
         Platform.runLater {
             val alert = Alert(Alert.AlertType.INFORMATION)
+            alert.initOwner(focusedWindow())
             alert.title = title
             alert.headerText = null
             alert.contentText = message
@@ -54,6 +59,7 @@ object AlertUtils {
     fun showWarning(title: String, message: String) {
         Platform.runLater {
             val alert = Alert(Alert.AlertType.WARNING)
+            alert.initOwner(focusedWindow())
             alert.title = title
             alert.headerText = null
             alert.contentText = message
@@ -63,6 +69,7 @@ object AlertUtils {
 
     fun showConfirmation(title: String, message: String): Boolean {
         val alert = Alert(Alert.AlertType.CONFIRMATION)
+        alert.initOwner(focusedWindow())
         alert.title = title
         alert.headerText = null
         alert.contentText = message
