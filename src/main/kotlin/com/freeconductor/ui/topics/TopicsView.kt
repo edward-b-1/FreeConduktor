@@ -219,7 +219,7 @@ class TopicsView(
                                     MenuItem("View Details").apply { setOnAction { onTopicSelected(item) } },
                                     SeparatorMenuItem(),
                                     MenuItem("Consume").apply { setOnAction { ConsumerWindow(item.name, cluster, adminService, setStatus) } },
-                                    MenuItem("Produce").apply { setOnAction { ProducerDialog(cluster, item.name).show() } },
+                                    MenuItem("Produce").apply { setOnAction { ProducerDialog(cluster, item.name, adminService = adminService).show() } },
                                     SeparatorMenuItem(),
                                     MenuItem("Delete…").apply {
                                         setOnAction {

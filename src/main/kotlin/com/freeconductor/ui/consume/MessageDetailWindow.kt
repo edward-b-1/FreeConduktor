@@ -1,6 +1,8 @@
 package com.freeconductor.ui.consume
 
+import com.freeconductor.model.ClusterConfig
 import com.freeconductor.model.MessageRecord
+import com.freeconductor.ui.produce.ProducerDialog
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -15,7 +17,7 @@ import javafx.stage.FileChooser
 import javafx.stage.Stage
 import java.time.format.DateTimeFormatter
 
-class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
+class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter, private val cluster: ClusterConfig) {
     private val stage = Stage()
 
     init {
@@ -116,8 +118,15 @@ class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter) {
 
     private fun buildBottomBar(msg: MessageRecord, formatter: DateTimeFormatter): HBox {
         val copyToProducerBtn = Button("Copy to a Producer Template").apply {
-            tooltip = Tooltip("Producer window coming soon")
-            isDisable = true
+            setOnAction {
+                ProducerDialog(
+                    cluster        = cluster,
+                    initialTopic   = msg.topic,
+                    initialKey     = msg.key,
+                    initialValue   = msg.value,
+                    initialHeaders = msg.headers
+                ).show()
+            }
         }
 
         val copyBtn = SplitMenuButton().apply {

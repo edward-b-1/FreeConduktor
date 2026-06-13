@@ -591,6 +591,6 @@ class MessageBrowserView(
     }
 
     private fun openDetail(msg: MessageRecord) {
-        MessageDetailWindow(msg, formatter).show()
+        MessageDetailWindow(msg, formatter, cluster).show()
     }
 }

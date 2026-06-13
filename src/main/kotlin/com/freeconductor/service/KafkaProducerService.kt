@@ -70,20 +70,11 @@ class KafkaProducerService(private val clusterConfig: ClusterConfig) : AutoClose
 
     private fun serializeValue(value: String, format: String): ByteArray {
         return when (format.uppercase()) {
-            "INTEGER", "INT" -> {
-                val intVal = value.trim().toInt()
-                ByteBuffer.allocate(4).putInt(intVal).array()
-            }
-            "LONG" -> {
-                val longVal = value.trim().toLong()
-                ByteBuffer.allocate(8).putLong(longVal).array()
-            }
-            "DOUBLE" -> {
-                val doubleVal = value.trim().toDouble()
-                ByteBuffer.allocate(8).putDouble(doubleVal).array()
-            }
-            "JSON", "STRING" -> value.toByteArray(Charsets.UTF_8)
-            else -> value.toByteArray(Charsets.UTF_8)
+            "INTEGER", "INT" -> ByteBuffer.allocate(4).putInt(value.trim().toInt()).array()
+            "LONG"           -> ByteBuffer.allocate(8).putLong(value.trim().toLong()).array()
+            "FLOAT"          -> ByteBuffer.allocate(4).putFloat(value.trim().toFloat()).array()
+            "DOUBLE"         -> ByteBuffer.allocate(8).putDouble(value.trim().toDouble()).array()
+            else             -> value.toByteArray(Charsets.UTF_8)
         }
     }
 

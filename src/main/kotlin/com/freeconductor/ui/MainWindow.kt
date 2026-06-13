@@ -134,7 +134,7 @@ class MainWindow(private val stage: Stage) {
             isDisable = true
             setOnAction {
                 val cluster = currentCluster ?: return@setOnAction
-                ProducerDialog(cluster, null).show()
+                ProducerDialog(cluster, adminService = adminService).show()
             }
         }
 

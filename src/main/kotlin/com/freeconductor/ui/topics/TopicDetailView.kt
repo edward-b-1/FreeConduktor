@@ -121,7 +121,7 @@ class TopicDetailView(
         }
         val produceBtn = Button("Produce").apply {
             minWidth = Button.USE_PREF_SIZE
-            setOnAction { ProducerDialog(cluster, topic.name).show() }
+            setOnAction { ProducerDialog(cluster, topic.name, adminService = adminService).show() }
         }
         val deleteBtn = Button("Delete", FontIcon(FontAwesomeRegular.TRASH_ALT).also { it.iconSize = 13 }).apply {
             styleClass.add("danger")
