@@ -599,9 +599,52 @@ class ProducerDialog(
         outputRoot.children.add(0, item)
     }
 
+    private fun showCsvInfoDialog(): Boolean {
+        fun numberedRow(n: String, text: String): HBox {
+            val numLabel = Label("$n.").apply { style = "-fx-font-weight: bold; -fx-min-width: 18px;" }
+            return HBox(8.0, numLabel, Label(text).apply { isWrapText = true }).apply {
+                HBox.setHgrow(children[1] as Label, Priority.ALWAYS)
+            }
+        }
+
+        val infoRow = HBox(6.0,
+            FontIcon(FontAwesomeSolid.INFO_CIRCLE).apply { iconSize = 13 },
+            Label("All the configuration from the current producer settings will apply. Make sure you selected the correct data types.").apply {
+                isWrapText = true
+                HBox.setHgrow(this, Priority.ALWAYS)
+            }
+        ).apply { alignment = Pos.TOP_LEFT }
+
+        val content = VBox(10.0).apply {
+            padding = Insets(16.0, 20.0, 8.0, 20.0)
+            prefWidth = 480.0
+            children.addAll(
+                Label("Import a CSV file containing the data to produce to the topic."),
+                Label("Allowed formats are :"),
+                numberedRow("1", "Two columns without header (first is Record key, second is Record value)"),
+                numberedRow("2", "A single column without header (for importing record values with null keys)"),
+                numberedRow("3", "Columns with at least a 'key' and 'value' named headers. Extra columns will be ignored."),
+                Separator(),
+                infoRow
+            )
+        }
+
+        val continueType = ButtonType("Continue", ButtonBar.ButtonData.OK_DONE)
+        val topic = topicCombo.value ?: ""
+        val dlg = Dialog<ButtonType>().apply {
+            title = "Import CSV to Topic $topic"
+            dialogPane.headerText = "Template : Send to $topic"
+            dialogPane.content = content
+            dialogPane.buttonTypes.addAll(continueType, ButtonType.CANCEL)
+        }
+        return dlg.showAndWait().orElse(ButtonType.CANCEL) == continueType
+    }
+
     private fun produceFromCsv() {
         val topic = topicCombo.value?.trim() ?: ""
         if (topic.isBlank()) { appendFailure("Topic name is required"); return }
+
+        if (!showCsvInfoDialog()) return
 
         val chooser = FileChooser().apply {
             title = "Select CSV File"
