@@ -11,7 +11,10 @@ import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.scene.input.MouseEvent
+import javafx.stage.FileChooser
 import javafx.stage.Stage
+import org.apache.commons.csv.CSVFormat
+import org.apache.commons.csv.CSVParser
 import org.kordamp.ikonli.fontawesome5.FontAwesomeRegular
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
 import org.kordamp.ikonli.javafx.FontIcon
@@ -97,6 +100,7 @@ class ProducerDialog(
         ) : OutputEntry()
         data class Failure(val timestamp: LocalDateTime, val message: String) : OutputEntry()
         data class Detail(val label: String, val text: String) : OutputEntry()
+        data class Info(val timestamp: LocalDateTime, val message: String) : OutputEntry()
     }
 
     private val outputRoot = TreeItem<OutputEntry>()
@@ -134,6 +138,10 @@ class ProducerDialog(
             padding = Insets(1.0, 0.0, 1.0, 0.0); alignment = Pos.CENTER_LEFT
         }
 
+        // ── Info node tree ────────────────────────────────────────────────────
+        private val infoLabel = Label().apply { style = "-fx-text-fill: -color-fg-muted;" }
+        private val infoBox   = VBox(infoLabel).apply { padding = Insets(3.0, 0.0, 3.0, 0.0) }
+
         override fun updateItem(item: OutputEntry?, empty: Boolean) {
             super.updateItem(item, empty)
             if (empty || item == null) { graphic = null; text = null; return }
@@ -155,6 +163,10 @@ class ProducerDialog(
                     detailKeyLabel.text   = "${item.label}:"
                     detailValueLabel.text = item.text
                     graphic = detailBox
+                }
+                is OutputEntry.Info -> {
+                    infoLabel.text = item.message
+                    graphic = infoBox
                 }
             }
         }
@@ -424,8 +436,8 @@ class ProducerDialog(
     // ── Bottom bar ────────────────────────────────────────────────────────────
 
     private fun buildBottomBar(): HBox {
-        val csvBtn  = Button("Produce from CSV").apply {
-            isDisable = true; tooltip = Tooltip("Coming soon")
+        val csvBtn = Button("Produce from CSV").apply {
+            setOnAction { produceFromCsv() }
         }
         val closeBtn = Button("Close").apply { setOnAction { stage.close() } }
 
@@ -534,7 +546,7 @@ class ProducerDialog(
     private fun selectedCompression() = (compressionGroup.selectedToggle as? ToggleButton)?.text ?: "none"
     private fun selectedAcks()        = (acksGroup.selectedToggle as? ToggleButton)?.text ?: "all"
 
-    private fun doSend(topic: String, value: String) {
+    private fun doSend(topic: String, value: String, keyOverride: String? = null) {
         val compression = selectedCompression()
         val acks        = selectedAcks()
         val idempotent  = idempotenceChk.isSelected
@@ -546,7 +558,7 @@ class ProducerDialog(
         }
         val headers   = collectHeaders()
         val partition = partitionCombo.value?.trim()?.takeIf { it.isNotBlank() }?.toIntOrNull()
-        val key       = keyArea.text.takeIf { it.isNotBlank() }
+        val key       = keyOverride ?: keyArea.text.takeIf { it.isNotBlank() }
         val startMs   = System.currentTimeMillis()
         try {
             val (actualPartition, offset) = svc.send(
@@ -580,6 +592,71 @@ class ProducerDialog(
     private fun appendFailure(message: String) {
         val item = TreeItem<OutputEntry>(OutputEntry.Failure(LocalDateTime.now(), message))
         outputRoot.children.add(0, item)
+    }
+
+    private fun appendInfo(message: String) {
+        val item = TreeItem<OutputEntry>(OutputEntry.Info(LocalDateTime.now(), message))
+        outputRoot.children.add(0, item)
+    }
+
+    private fun produceFromCsv() {
+        val topic = topicCombo.value?.trim() ?: ""
+        if (topic.isBlank()) { appendFailure("Topic name is required"); return }
+
+        val chooser = FileChooser().apply {
+            title = "Select CSV File"
+            extensionFilters.add(FileChooser.ExtensionFilter("CSV Files", "*.csv"))
+        }
+        val file = chooser.showOpenDialog(stage) ?: return
+
+        Thread {
+            try {
+                // Peek at first row to detect format
+                val firstLine = file.useLines(Charsets.UTF_8) { it.firstOrNull() } ?: return@Thread
+                val firstFields = CSVParser.parse(firstLine, CSVFormat.DEFAULT)
+                    .records.firstOrNull()?.map { it.trim().lowercase() } ?: return@Thread
+                val hasNamedHeaders = firstFields.any { it == "key" || it == "value" }
+
+                Platform.runLater { appendInfo("Producing from ${file.name}…") }
+
+                if (hasNamedHeaders) {
+                    // Format 3: first row is a header row with "key" and/or "value" columns
+                    val format = CSVFormat.DEFAULT.builder()
+                        .setHeader().setSkipHeaderRecord(true)
+                        .setIgnoreHeaderCase(true).setTrim(true).build()
+                    CSVParser.parse(file, Charsets.UTF_8, format).use { parser ->
+                        val headers = parser.headerNames.map { it.lowercase() }
+                        if ("value" !in headers) {
+                            Platform.runLater { appendFailure("CSV error: no 'value' column found") }
+                            return@use
+                        }
+                        val hasKey = "key" in headers
+                        for (record in parser) {
+                            val key   = if (hasKey) record.get("key").takeIf { it.isNotBlank() } else null
+                            val value = record.get("value")
+                            if (value.isBlank()) continue
+                            doSend(topic, value, key)
+                        }
+                    }
+                } else {
+                    // Format 1 (two columns) or Format 2 (single column): no header, positional
+                    val format = CSVFormat.DEFAULT.builder().setTrim(true).build()
+                    CSVParser.parse(file, Charsets.UTF_8, format).use { parser ->
+                        for (record in parser) {
+                            if (record.size() == 0) continue
+                            val key   = if (record.size() >= 2) record.get(0).takeIf { it.isNotBlank() } else null
+                            val value = if (record.size() >= 2) record.get(1) else record.get(0)
+                            if (value.isBlank()) continue
+                            doSend(topic, value, key)
+                        }
+                    }
+                }
+
+                Platform.runLater { appendInfo("Done: ${file.name}") }
+            } catch (e: Exception) {
+                Platform.runLater { appendFailure("CSV error: ${e.message}") }
+            }
+        }.also { it.isDaemon = true }.start()
     }
 
     fun show() {

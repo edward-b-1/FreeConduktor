@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.freeconductor"
-version = "0.1.9"
+version = "0.1.10"
 
 repositories {
     mavenCentral()
@@ -30,6 +30,9 @@ dependencies {
     // Icons
     implementation("org.kordamp.ikonli:ikonli-javafx:12.3.1")
     implementation("org.kordamp.ikonli:ikonli-fontawesome5-pack:12.3.1")
+
+    // CSV parsing
+    implementation("org.apache.commons:commons-csv:1.10.0")
 
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.10")
