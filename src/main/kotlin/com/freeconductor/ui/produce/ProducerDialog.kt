@@ -4,8 +4,6 @@ import com.freeconductor.model.ClusterConfig
 import com.freeconductor.service.KafkaAdminService
 import com.freeconductor.service.KafkaProducerService
 import javafx.application.Platform
-import javafx.beans.property.SimpleStringProperty
-import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Scene
@@ -14,6 +12,7 @@ import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.scene.input.MouseEvent
 import javafx.stage.Stage
+import org.kordamp.ikonli.fontawesome5.FontAwesomeRegular
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
 import org.kordamp.ikonli.javafx.FontIcon
 import java.time.LocalDateTime
@@ -37,7 +36,23 @@ class ProducerDialog(
         promptText = "topic-name"
         if (!initialTopic.isNullOrBlank()) value = initialTopic
     }
-    private val partitionField = TextField().apply { promptText = "Auto" }
+    private val partitionCombo = ComboBox<String>().apply { isEditable = true; promptText = "Auto"; prefWidth = 200.0 }
+
+    // ── Options state ─────────────────────────────────────────────────────────
+
+    private val compressionGroup  = ToggleGroup()
+    private val compressionNone   = ToggleButton("none").apply   { toggleGroup = compressionGroup; isSelected = true }
+    private val compressionGzip   = ToggleButton("gzip").apply   { toggleGroup = compressionGroup }
+    private val compressionSnappy = ToggleButton("snappy").apply { toggleGroup = compressionGroup }
+    private val compressionLz4    = ToggleButton("lz4").apply    { toggleGroup = compressionGroup }
+    private val compressionZstd   = ToggleButton("zstd").apply   { toggleGroup = compressionGroup }
+
+    private val idempotenceChk = CheckBox()
+
+    private val acksGroup  = ToggleGroup()
+    private val acksNone   = ToggleButton("none").apply   { toggleGroup = acksGroup }
+    private val acksLeader = ToggleButton("leader").apply { toggleGroup = acksGroup }
+    private val acksAll    = ToggleButton("all").apply    { toggleGroup = acksGroup; isSelected = true }
 
     private val keyFormatBox   = ComboBox<String>().apply { items.addAll(formats); value = "String" }
     private val valueFormatBox = ComboBox<String>().apply { items.addAll(formats); value = "String" }
@@ -53,8 +68,7 @@ class ProducerDialog(
         VBox.setVgrow(this, Priority.ALWAYS)
     }
 
-    private val headersItems = FXCollections.observableArrayList<Pair<String, String>>()
-    private val headersTable = TableView(headersItems)
+    private val headerRows = VBox(4.0)
 
     // ── Flow mode state ───────────────────────────────────────────────────────
 
@@ -151,7 +165,7 @@ class ProducerDialog(
     private var producerService: KafkaProducerService? = null
 
     init {
-        initialHeaders.forEach { (k, v) -> headersItems.add(Pair(k, v)) }
+        initialHeaders.forEach { (k, v) -> headerRows.children.add(buildHeaderRow(k, v)) }
 
         val root = BorderPane().apply {
             center = buildCenter()
@@ -172,8 +186,11 @@ class ProducerDialog(
         stage.setOnCloseRequest { stopFlow(); producerService?.close() }
 
         // Prevent deselecting the active toggle button by clicking it again
-        manualBtn.addEventFilter(MouseEvent.MOUSE_PRESSED) { if (manualBtn.isSelected) it.consume() }
-        timedBtn.addEventFilter(MouseEvent.MOUSE_PRESSED)  { if (timedBtn.isSelected)  it.consume() }
+        listOf(manualBtn, timedBtn,
+               compressionNone, compressionGzip, compressionSnappy, compressionLz4, compressionZstd,
+               acksNone, acksLeader, acksAll).forEach { btn ->
+            btn.addEventFilter(MouseEvent.MOUSE_PRESSED) { if (btn.isSelected) it.consume() }
+        }
 
         timedBtn.selectedProperty().addListener { _, _, timed -> updateSendButton(timed, false) }
 
@@ -183,6 +200,10 @@ class ProducerDialog(
                 timedBtn.isSelected               -> startFlow()
                 else                              -> sendMessage()
             }
+        }
+
+        topicCombo.valueProperty().addListener { _, _, topic ->
+            if (!topic.isNullOrBlank()) loadPartitions(topic)
         }
 
         loadTopics()
@@ -317,32 +338,53 @@ class ProducerDialog(
 
     // ── Headers tab ───────────────────────────────────────────────────────────
 
-    private fun buildHeadersTab(): Tab {
-        headersTable.placeholder = Label("No headers")
-        headersTable.columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
-        headersTable.columns.addAll(
-            TableColumn<Pair<String, String>, String>("Key").apply {
-                setCellValueFactory { SimpleStringProperty(it.value.first) }
-            },
-            TableColumn<Pair<String, String>, String>("Value").apply {
-                setCellValueFactory { SimpleStringProperty(it.value.second) }
-            }
-        )
-        VBox.setVgrow(headersTable, Priority.ALWAYS)
-
-        val addBtn    = Button("+ Add").apply { setOnAction { addHeader() } }
-        val removeBtn = Button("Remove").apply {
+    private fun buildHeaderRow(key: String = "", value: String = ""): HBox {
+        val fieldStyle = "-fx-background-color: transparent; -fx-border-color: transparent; -fx-background-insets: 0; -fx-padding: 2 4 2 4;"
+        val keyField = TextField(key).apply {
+            promptText = "Key"
+            style = fieldStyle
+            HBox.setHgrow(this, Priority.ALWAYS)
+        }
+        val valueField = TextField(value).apply {
+            promptText = "Value"
+            style = fieldStyle
+            HBox.setHgrow(this, Priority.ALWAYS)
+        }
+        val deleteBtn = Button().apply {
+            graphic = FontIcon(FontAwesomeRegular.TRASH_ALT).apply { iconSize = 11 }
             styleClass.add("danger")
-            setOnAction { headersTable.selectionModel.selectedItem?.let { headersItems.remove(it) } }
         }
-        val toolbar = HBox(8.0, Region().apply { HBox.setHgrow(this, Priority.ALWAYS) }, addBtn, removeBtn).apply {
-            padding = Insets(0.0, 0.0, 6.0, 0.0)
-            alignment = Pos.CENTER_RIGHT
+        val row = HBox(8.0, keyField, valueField, deleteBtn).apply {
+            alignment = Pos.CENTER_LEFT
+            padding = Insets(4.0, 0.0, 4.0, 0.0)
+            style = "-fx-border-color: -color-border-default; -fx-border-width: 0 0 1 0;"
+        }
+        deleteBtn.setOnAction { headerRows.children.remove(row) }
+        return row
+    }
+
+    private fun collectHeaders(): Map<String, String> =
+        headerRows.children.filterIsInstance<HBox>().mapNotNull { row ->
+            val key   = (row.children[0] as TextField).text.trim()
+            val value = (row.children[1] as TextField).text.trim()
+            if (key.isNotBlank()) key to value else null
+        }.toMap()
+
+    private fun buildHeadersTab(): Tab {
+        val addBtn = Button("ADD HEADER").apply {
+            styleClass.add("accent")
+            setOnAction { headerRows.children.add(buildHeaderRow()) }
         }
 
-        val content = VBox(0.0, toolbar, headersTable).apply {
+        val scroll = ScrollPane(headerRows).apply {
+            isFitToWidth = true
+            style = "-fx-background-color: transparent; -fx-background: transparent;"
+            VBox.setVgrow(this, Priority.ALWAYS)
+        }
+
+        val content = VBox(10.0, addBtn, scroll).apply {
             padding = Insets(10.0)
-            VBox.setVgrow(headersTable, Priority.ALWAYS)
+            VBox.setVgrow(scroll, Priority.ALWAYS)
         }
 
         return Tab("Headers", content)
@@ -351,14 +393,30 @@ class ProducerDialog(
     // ── Options tab ───────────────────────────────────────────────────────────
 
     private fun buildOptionsTab(): Tab {
+        val partitionLabel = HBox(5.0,
+            Label("Force Partition"),
+            FontIcon(FontAwesomeSolid.INFO_CIRCLE).apply {
+                iconSize = 12
+                Tooltip.install(this, Tooltip("Leave empty to use automatic partitioning"))
+            }
+        ).apply { alignment = Pos.CENTER_LEFT }
+
+        val compressionBar = HBox(8.0,
+            compressionNone, compressionGzip, compressionSnappy, compressionLz4, compressionZstd
+        ).apply { alignment = Pos.CENTER_LEFT }
+
+        val acksBar = HBox(8.0, acksNone, acksLeader, acksAll).apply { alignment = Pos.CENTER_LEFT }
+
         val grid = GridPane().apply {
-            hgap = 12.0; vgap = 10.0; padding = Insets(12.0)
+            hgap = 12.0; vgap = 12.0; padding = Insets(12.0)
             columnConstraints.addAll(
-                ColumnConstraints(80.0, 100.0, 120.0),
+                ColumnConstraints(130.0, 145.0, 160.0),
                 ColumnConstraints().also { it.hgrow = Priority.ALWAYS }
             )
-            addRow(0, Label("Partition:"), partitionField)
-            GridPane.setHgrow(partitionField, Priority.ALWAYS)
+            addRow(0, partitionLabel, partitionCombo)
+            addRow(1, Label("Compression Type"), compressionBar)
+            addRow(2, Label("Idempotence"), idempotenceChk)
+            addRow(3, Label("Acks"), acksBar)
         }
         return Tab("Options", grid)
     }
@@ -385,6 +443,20 @@ class ProducerDialog(
     }
 
     // ── Logic ─────────────────────────────────────────────────────────────────
+
+    private fun loadPartitions(topic: String) {
+        val svc = adminService ?: return
+        Thread {
+            try {
+                val count = svc.describeTopicPartitions(topic).size
+                Platform.runLater {
+                    val current = partitionCombo.value
+                    partitionCombo.items.setAll((0 until count).map { it.toString() })
+                    partitionCombo.value = if (current in partitionCombo.items) current else null
+                }
+            } catch (_: Exception) { }
+        }.also { it.isDaemon = true }.start()
+    }
 
     private fun loadTopics() {
         val svc = adminService ?: return
@@ -459,10 +531,21 @@ class ProducerDialog(
         updateSendButton(timed = true, running = false)
     }
 
+    private fun selectedCompression() = (compressionGroup.selectedToggle as? ToggleButton)?.text ?: "none"
+    private fun selectedAcks()        = (acksGroup.selectedToggle as? ToggleButton)?.text ?: "all"
+
     private fun doSend(topic: String, value: String) {
-        val svc       = producerService ?: KafkaProducerService(cluster).also { producerService = it }
-        val headers   = headersItems.associate { it.first to it.second }
-        val partition = partitionField.text.trim().toIntOrNull()
+        val compression = selectedCompression()
+        val acks        = selectedAcks()
+        val idempotent  = idempotenceChk.isSelected
+        val svc = producerService?.takeIf {
+            it.compression == compression && it.acks == acks && it.idempotent == idempotent
+        } ?: KafkaProducerService(cluster, compression, acks, idempotent).also {
+            producerService?.close()
+            producerService = it
+        }
+        val headers   = collectHeaders()
+        val partition = partitionCombo.value?.trim()?.takeIf { it.isNotBlank() }?.toIntOrNull()
         val key       = keyArea.text.takeIf { it.isNotBlank() }
         val startMs   = System.currentTimeMillis()
         try {
@@ -497,25 +580,6 @@ class ProducerDialog(
     private fun appendFailure(message: String) {
         val item = TreeItem<OutputEntry>(OutputEntry.Failure(LocalDateTime.now(), message))
         outputRoot.children.add(0, item)
-    }
-
-    private fun addHeader() {
-        val keyField   = TextField().apply { promptText = "Header key" }
-        val valueField = TextField().apply { promptText = "Header value" }
-        val grid = GridPane().apply {
-            hgap = 8.0; vgap = 8.0; padding = Insets(12.0)
-            addRow(0, Label("Key:"),   keyField)
-            addRow(1, Label("Value:"), valueField)
-            GridPane.setHgrow(keyField,   Priority.ALWAYS)
-            GridPane.setHgrow(valueField, Priority.ALWAYS)
-        }
-        val dlg = Dialog<Pair<String, String>>().apply {
-            title = "Add Header"
-            dialogPane.content = grid
-            dialogPane.buttonTypes.addAll(ButtonType.OK, ButtonType.CANCEL)
-            setResultConverter { if (it == ButtonType.OK) Pair(keyField.text.trim(), valueField.text.trim()) else null }
-        }
-        dlg.showAndWait().ifPresent { if (it.first.isNotBlank()) headersItems.add(it) }
     }
 
     fun show() {

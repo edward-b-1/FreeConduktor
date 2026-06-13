@@ -10,7 +10,12 @@ import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import java.util.Properties
 
-class KafkaProducerService(private val clusterConfig: ClusterConfig) : AutoCloseable {
+class KafkaProducerService(
+    private val clusterConfig: ClusterConfig,
+    val compression: String = "none",
+    val acks: String = "all",
+    val idempotent: Boolean = false
+) : AutoCloseable {
     private val logger = LoggerFactory.getLogger(KafkaProducerService::class.java)
     private val producer: KafkaProducer<ByteArray?, ByteArray?> = createProducer()
 
@@ -19,8 +24,14 @@ class KafkaProducerService(private val clusterConfig: ClusterConfig) : AutoClose
         props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = clusterConfig.bootstrapServers
         props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
-        props[ProducerConfig.ACKS_CONFIG] = "all"
+        props[ProducerConfig.ACKS_CONFIG] = when (acks) {
+            "none"   -> "0"
+            "leader" -> "1"
+            else     -> "all"
+        }
         props[ProducerConfig.RETRIES_CONFIG] = 3
+        if (compression != "none") props[ProducerConfig.COMPRESSION_TYPE_CONFIG] = compression
+        if (idempotent)            props[ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG] = true
         props["security.protocol"] = clusterConfig.securityProtocol
 
         when (clusterConfig.securityProtocol) {
