@@ -200,6 +200,37 @@ class TopicsView(
             }
             prefWidth = 80.0; style = "-fx-alignment: CENTER-RIGHT;"
         }
+        val lastWriteCol = TableColumn<TopicInfo, TopicInfo>("Last Write").apply {
+            setCellValueFactory { ReadOnlyObjectWrapper(it.value) }
+            setCellFactory {
+                object : TableCell<TopicInfo, TopicInfo>() {
+                    override fun updateItem(item: TopicInfo?, empty: Boolean) {
+                        super.updateItem(item, empty)
+                        if (empty || item == null) { text = null; style = ""; return }
+                        val ts = item.lastWriteTime
+                        if (ts == null) { text = "—"; style = "-fx-alignment: CENTER-RIGHT;"; return }
+                        val ageMs = System.currentTimeMillis() - ts
+                        val (label, color) = when {
+                            ageMs <  60_000L              -> "now"  to "-color-danger-fg"
+                            ageMs <  3_600_000L           -> "${ageMs / 60_000L}m ago" to null
+                            ageMs <  86_400_000L          -> "${ageMs / 3_600_000L}h ago" to null
+                            else                          -> "${ageMs / 86_400_000L}d ago" to null
+                        }
+                        text = label
+                        style = "-fx-alignment: CENTER-RIGHT;" +
+                                if (color != null) " -fx-text-fill: $color;" else ""
+                    }
+                }
+            }
+            prefWidth = 90.0
+        }
+        val spreadCol = TableColumn<TopicInfo, String>("Spread").apply {
+            setCellValueFactory {
+                val s = it.value.spread
+                SimpleStringProperty(if (s == null) "—" else "$s%")
+            }
+            prefWidth = 65.0; style = "-fx-alignment: CENTER-RIGHT;"
+        }
         val internalCol = TableColumn<TopicInfo, String>("Internal").apply {
             setCellValueFactory { SimpleStringProperty(if (it.value.isInternal) "Yes" else "") }
             prefWidth = 70.0; style = "-fx-alignment: CENTER;"
@@ -247,7 +278,7 @@ class TopicsView(
             style = "-fx-alignment: CENTER;"
         }
 
-        topicTable.columns.addAll(consumeCol, nameCol, rfCol, partCol, countCol, sizeCol, consumersCol, internalCol, gearCol)
+        topicTable.columns.addAll(consumeCol, nameCol, rfCol, partCol, countCol, sizeCol, consumersCol, lastWriteCol, spreadCol, internalCol, gearCol)
         topicTable.placeholder = Label("No topics found")
         topicTable.selectionModel.selectionMode = SelectionMode.SINGLE
         topicTable.columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN
@@ -341,6 +372,16 @@ class TopicsView(
                         topicItems.setAll(topicItems.map { t -> t.copy(consumerCount = consumers[t.name] ?: 0) })
                     }
                 } catch (_: Exception) { /* consumer counts optional */ }
+
+                // Last write times
+                try {
+                    val lastWrites = adminService.getTopicLastWriteTimes(nonInternal)
+                    Platform.runLater {
+                        topicItems.setAll(topicItems.map { t ->
+                            if (lastWrites.containsKey(t.name)) t.copy(lastWriteTime = lastWrites[t.name]) else t
+                        })
+                    }
+                } catch (_: Exception) { /* last write times optional */ }
 
             } catch (e: Exception) {
                 Platform.runLater {

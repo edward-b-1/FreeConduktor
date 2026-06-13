@@ -55,21 +55,52 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
         val describeResult = adminClient.describeTopics(topicNames)
         val descriptions = describeResult.allTopicNames().get(15, TimeUnit.SECONDS)
 
+        val brokerCount = adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS).size.coerceAtLeast(1)
+
         return descriptions.values.map { desc ->
             var urp = 0; var noLeader = 0
             desc.partitions().forEach { p ->
                 if (p.leader() == null || p.leader()!!.id() == -1) noLeader++
                 if (p.isr().size < p.replicas().size) urp++
             }
+            val uniqueBrokers = desc.partitions().flatMap { p -> p.replicas().map { it.id() } }.toSet().size
             TopicInfo(
                 name = desc.name(),
                 partitionCount = desc.partitions().size,
                 replicationFactor = desc.partitions().firstOrNull()?.replicas()?.size ?: 0,
                 isInternal = desc.isInternal,
                 urpCount = urp,
-                noLeaderCount = noLeader
+                noLeaderCount = noLeader,
+                spread = (uniqueBrokers * 100) / brokerCount
             )
         }.sortedBy { it.name }
+    }
+
+    fun getTopicLastWriteTimes(topicNames: Collection<String>): Map<String, Long> {
+        if (topicNames.isEmpty()) return emptyMap()
+        val descriptions = adminClient.describeTopics(topicNames.toList()).allTopicNames().get(15, TimeUnit.SECONDS)
+        val allPartitions = descriptions.values.flatMap { desc ->
+            desc.partitions().map { TopicPartition(desc.name(), it.partition()) }
+        }
+        if (allPartitions.isEmpty()) return emptyMap()
+
+        val latestOffsets = adminClient.listOffsets(allPartitions.associateWith { OffsetSpec.latest() })
+            .all().get(15, TimeUnit.SECONDS)
+        val nonEmpty = allPartitions.filter { (latestOffsets[it]?.offset() ?: 0L) > 0L }
+        if (nonEmpty.isEmpty()) return emptyMap()
+
+        val maxTsResult = adminClient.listOffsets(nonEmpty.associateWith { OffsetSpec.maxTimestamp() })
+            .all().get(15, TimeUnit.SECONDS)
+
+        val result = mutableMapOf<String, Long>()
+        for ((tp, info) in maxTsResult) {
+            val ts = info.timestamp()
+            if (ts > 0L) {
+                val prev = result[tp.topic()]
+                if (prev == null || ts > prev) result[tp.topic()] = ts
+            }
+        }
+        return result
     }
 
     fun createTopic(name: String, partitions: Int, replicationFactor: Short, configs: Map<String, String> = emptyMap()) {

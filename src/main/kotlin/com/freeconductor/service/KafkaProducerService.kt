@@ -49,7 +49,7 @@ class KafkaProducerService(private val clusterConfig: ClusterConfig) : AutoClose
         valueFormat: String = "STRING",
         partition: Int? = null,
         headers: Map<String, String> = emptyMap()
-    ): Long {
+    ): Pair<Int, Long> {
         val keyBytes = key?.let { serializeValue(it, keyFormat) }
         val valueBytes = serializeValue(value, valueFormat)
 
@@ -65,16 +65,17 @@ class KafkaProducerService(private val clusterConfig: ClusterConfig) : AutoClose
 
         val metadata = producer.send(record).get()
         logger.info("Sent message to {}-{} at offset {}", topic, metadata.partition(), metadata.offset())
-        return metadata.offset()
+        return Pair(metadata.partition(), metadata.offset())
     }
 
     private fun serializeValue(value: String, format: String): ByteArray {
         return when (format.uppercase()) {
-            "INTEGER", "INT" -> ByteBuffer.allocate(4).putInt(value.trim().toInt()).array()
-            "LONG"           -> ByteBuffer.allocate(8).putLong(value.trim().toLong()).array()
-            "FLOAT"          -> ByteBuffer.allocate(4).putFloat(value.trim().toFloat()).array()
-            "DOUBLE"         -> ByteBuffer.allocate(8).putDouble(value.trim().toDouble()).array()
-            else             -> value.toByteArray(Charsets.UTF_8)
+            "INTEGER", "INT"         -> ByteBuffer.allocate(4).putInt(value.trim().toInt()).array()
+            "LONG"                   -> ByteBuffer.allocate(8).putLong(value.trim().toLong()).array()
+            "FLOAT"                  -> ByteBuffer.allocate(4).putFloat(value.trim().toFloat()).array()
+            "DOUBLE"                 -> ByteBuffer.allocate(8).putDouble(value.trim().toDouble()).array()
+            "BYTES (BASE64)", "BASE64" -> java.util.Base64.getDecoder().decode(value.trim())
+            else                     -> value.toByteArray(Charsets.UTF_8)
         }
     }
 

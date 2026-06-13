@@ -13,6 +13,10 @@ import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.stage.Stage
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class ProducerDialog(
     private val cluster: ClusterConfig,
@@ -24,7 +28,7 @@ class ProducerDialog(
 ) {
     private val stage = Stage()
 
-    private val formats = listOf("String", "JSON", "Int", "Long", "Float", "Double")
+    private val formats = listOf("String", "JSON", "Int", "Long", "Float", "Double", "Bytes (Base64)")
 
     private val topicCombo = ComboBox<String>().apply {
         isEditable = true
@@ -51,10 +55,81 @@ class ProducerDialog(
     private val headersItems = FXCollections.observableArrayList<Pair<String, String>>()
     private val headersTable = TableView(headersItems)
 
-    private val outputItems = FXCollections.observableArrayList<String>()
-    private val outputList  = ListView(outputItems).apply {
-        placeholder = Label("No messages sent yet")
+    // ── Output panel model ────────────────────────────────────────────────────
+
+    private sealed class OutputEntry {
+        data class Success(
+            val timestamp: LocalDateTime,
+            val latencyMs: Long,
+            val topic: String,
+            val partition: Int,
+            val offset: Long,
+            val key: String?,
+            val value: String
+        ) : OutputEntry()
+        data class Failure(val timestamp: LocalDateTime, val message: String) : OutputEntry()
+        data class Detail(val label: String, val text: String) : OutputEntry()
+    }
+
+    private val outputRoot = TreeItem<OutputEntry>()
+    private val outputTree = TreeView<OutputEntry>(outputRoot).apply {
+        isShowRoot = false
         VBox.setVgrow(this, Priority.ALWAYS)
+        setCellFactory { OutputEntryCell() }
+    }
+
+    private inner class OutputEntryCell : TreeCell<OutputEntry>() {
+        private val tsFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+        // ── Success node tree (built once, reused) ────────────────────────────
+        private val tsLabel      = Label()
+        private val latencyLabel = Label()
+        private val clockIcon    = FontIcon(FontAwesomeSolid.CLOCK).apply { iconSize = 13 }
+        private val topicLabel   = Label()
+        private val offsetLabel  = Label()
+        private val successBox   = VBox(1.0,
+            HBox(6.0, tsLabel, clockIcon, latencyLabel).apply { alignment = Pos.CENTER_LEFT },
+            topicLabel, offsetLabel
+        ).apply { padding = Insets(3.0, 0.0, 3.0, 0.0) }
+
+        // ── Failure node tree ─────────────────────────────────────────────────
+        private val tsFailLabel  = Label()
+        private val errorLabel   = Label().apply {
+            style = "-fx-text-fill: -color-danger-fg;"; isWrapText = true
+        }
+        private val failureBox = VBox(1.0, tsFailLabel, errorLabel).apply { padding = Insets(3.0, 0.0, 3.0, 0.0) }
+
+        // ── Detail node tree ──────────────────────────────────────────────────
+        private val detailKeyLabel   = Label().apply { style = "-fx-min-width: 36px;" }
+        private val detailValueLabel = Label()
+        private val detailBox = HBox(6.0, detailKeyLabel, detailValueLabel).apply {
+            padding = Insets(1.0, 0.0, 1.0, 0.0); alignment = Pos.CENTER_LEFT
+        }
+
+        override fun updateItem(item: OutputEntry?, empty: Boolean) {
+            super.updateItem(item, empty)
+            if (empty || item == null) { graphic = null; text = null; return }
+            text = null
+            when (item) {
+                is OutputEntry.Success -> {
+                    tsLabel.text      = item.timestamp.format(tsFormat)
+                    latencyLabel.text = "${item.latencyMs}ms"
+                    topicLabel.text   = "${item.topic}-${item.partition}"
+                    offsetLabel.text  = "Offset: ${item.offset}"
+                    graphic = successBox
+                }
+                is OutputEntry.Failure -> {
+                    tsFailLabel.text = item.timestamp.format(tsFormat)
+                    errorLabel.text  = item.message
+                    graphic = failureBox
+                }
+                is OutputEntry.Detail -> {
+                    detailKeyLabel.text   = "${item.label}:"
+                    detailValueLabel.text = item.text
+                    graphic = detailBox
+                }
+            }
+        }
     }
 
     private val sendBtn = Button("Send").apply { styleClass.add("accent") }
@@ -107,9 +182,9 @@ class ProducerDialog(
         }
 
         val outputTitle = Label("OUTPUT").apply { styleClass.add("config-section-label") }
-        val outputPane = VBox(8.0, outputTitle, outputList).apply {
+        val outputPane = VBox(8.0, outputTitle, outputTree).apply {
             padding = Insets(10.0)
-            VBox.setVgrow(outputList, Priority.ALWAYS)
+            VBox.setVgrow(outputTree, Priority.ALWAYS)
         }
 
         return SplitPane(leftPane, outputPane).apply {
@@ -241,36 +316,52 @@ class ProducerDialog(
 
     private fun sendMessage() {
         val topic = topicCombo.value?.trim() ?: ""
-        if (topic.isBlank()) { appendOutput("Error: topic name is required", error = true); return }
+        if (topic.isBlank()) { appendFailure("Topic name is required"); return }
         val value = valueArea.text
-        if (value.isBlank()) { appendOutput("Error: message value is required", error = true); return }
+        if (value.isBlank()) { appendFailure("Message value is required"); return }
 
         val svc       = producerService ?: KafkaProducerService(cluster).also { producerService = it }
         val headers   = headersItems.associate { it.first to it.second }
         val partition = partitionField.text.trim().toIntOrNull()
+        val key       = keyArea.text.takeIf { it.isNotBlank() }
+        val startMs   = System.currentTimeMillis()
 
         Thread {
             try {
-                val offset = svc.send(
+                val (actualPartition, offset) = svc.send(
                     topic       = topic,
-                    key         = keyArea.text.takeIf { it.isNotBlank() },
+                    key         = key,
                     value       = value,
                     keyFormat   = keyFormatBox.value.uppercase(),
                     valueFormat = valueFormatBox.value.uppercase(),
                     partition   = partition,
                     headers     = headers
                 )
+                val latencyMs = System.currentTimeMillis() - startMs
                 Platform.runLater {
-                    appendOutput("Sent  ✓  offset $offset  partition ${partition ?: "auto"}", error = false)
+                    appendSuccess(topic, actualPartition, offset, latencyMs, key, value)
                 }
             } catch (e: Exception) {
-                Platform.runLater { appendOutput("Error: ${e.message}", error = true) }
+                Platform.runLater { appendFailure(e.message ?: "Unknown error") }
             }
         }.also { it.isDaemon = true }.start()
     }
 
-    private fun appendOutput(msg: String, error: Boolean) {
-        outputItems.add(0, msg)
+    private fun appendSuccess(topic: String, partition: Int, offset: Long, latencyMs: Long, key: String?, value: String) {
+        val entry = OutputEntry.Success(LocalDateTime.now(), latencyMs, topic, partition, offset, key, value)
+        val item = TreeItem<OutputEntry>(entry)
+        if (!key.isNullOrBlank()) {
+            val truncKey = if (key.length > 120) key.take(120) + "…" else key
+            item.children.add(TreeItem(OutputEntry.Detail("Key", truncKey)))
+        }
+        val truncValue = if (value.length > 120) value.take(120) + "…" else value
+        item.children.add(TreeItem(OutputEntry.Detail("Value", truncValue)))
+        outputRoot.children.add(0, item)
+    }
+
+    private fun appendFailure(message: String) {
+        val item = TreeItem<OutputEntry>(OutputEntry.Failure(LocalDateTime.now(), message))
+        outputRoot.children.add(0, item)
     }
 
     private fun addHeader() {

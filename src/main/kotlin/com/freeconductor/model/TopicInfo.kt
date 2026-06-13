@@ -9,8 +9,10 @@ data class TopicInfo(
     val isFavourite: Boolean = false,
     val urpCount: Int = 0,
     val noLeaderCount: Int = 0,
-    val logSize: Long = -1L,      // bytes; -1 = not yet loaded
-    val consumerCount: Int = -1   // active consumer groups; -1 = not yet loaded
+    val logSize: Long = -1L,       // bytes; -1 = not yet loaded
+    val consumerCount: Int = -1,   // active consumer groups; -1 = not yet loaded
+    val lastWriteTime: Long? = null, // epoch ms of latest message; null = not loaded / empty
+    val spread: Int? = null          // % of brokers holding ≥1 replica; null = not loaded
 )
 
 data class PartitionInfo(
