@@ -12,6 +12,7 @@ import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.layout.*
+import javafx.scene.input.MouseEvent
 import javafx.stage.Stage
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
 import org.kordamp.ikonli.javafx.FontIcon
@@ -54,6 +55,19 @@ class ProducerDialog(
 
     private val headersItems = FXCollections.observableArrayList<Pair<String, String>>()
     private val headersTable = TableView(headersItems)
+
+    // ── Flow mode state ───────────────────────────────────────────────────────
+
+    private val modeGroup    = ToggleGroup()
+    private val manualBtn    = ToggleButton("manual").apply { toggleGroup = modeGroup; isSelected = true }
+    private val timedBtn     = ToggleButton("timed").apply  { toggleGroup = modeGroup }
+    private val chunkSpinner = Spinner<Int>(1, 10_000, 1).apply { isEditable = true; prefWidth = 100.0 }
+    private val intervalSpinner = Spinner<Int>(0, 3_600_000, 1000).apply { isEditable = true; prefWidth = 110.0 }
+    private val jitterSpinner   = Spinner<Int>(0, 3_600_000, 0).apply    { isEditable = true; prefWidth = 110.0 }
+    private val elapsedSpinner  = Spinner<Int>(0, Int.MAX_VALUE, 0).apply { isEditable = true; prefWidth = 110.0 }
+    private val msgCountSpinner = Spinner<Int>(0, Int.MAX_VALUE, 0).apply { isEditable = true; prefWidth = 110.0 }
+
+    @Volatile private var flowRunning = false
 
     // ── Output panel model ────────────────────────────────────────────────────
 
@@ -155,9 +169,21 @@ class ProducerDialog(
             ?.let { stage.icons.add(Image(it)) }
         stage.scene = scene
         stage.isResizable = true
-        stage.setOnCloseRequest { producerService?.close() }
+        stage.setOnCloseRequest { stopFlow(); producerService?.close() }
 
-        sendBtn.setOnAction { sendMessage() }
+        // Prevent deselecting the active toggle button by clicking it again
+        manualBtn.addEventFilter(MouseEvent.MOUSE_PRESSED) { if (manualBtn.isSelected) it.consume() }
+        timedBtn.addEventFilter(MouseEvent.MOUSE_PRESSED)  { if (timedBtn.isSelected)  it.consume() }
+
+        timedBtn.selectedProperty().addListener { _, _, timed -> updateSendButton(timed, false) }
+
+        sendBtn.setOnAction {
+            when {
+                timedBtn.isSelected && flowRunning -> stopFlow()
+                timedBtn.isSelected               -> startFlow()
+                else                              -> sendMessage()
+            }
+        }
 
         loadTopics()
     }
@@ -173,7 +199,7 @@ class ProducerDialog(
 
         val tabs = TabPane().apply {
             tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
-            tabs.addAll(buildDataTab(), buildHeadersTab(), buildOptionsTab())
+            tabs.addAll(buildDataTab(), buildFlowTab(), buildHeadersTab(), buildOptionsTab())
             VBox.setVgrow(this, Priority.ALWAYS)
         }
 
@@ -225,6 +251,68 @@ class ProducerDialog(
         VBox.setVgrow(valueArea, Priority.ALWAYS)
 
         return Tab("Data", content)
+    }
+
+    // ── Flow tab ──────────────────────────────────────────────────────────────
+
+    private fun buildFlowTab(): Tab {
+        fun infoLabel(text: String, tip: String): HBox {
+            val icon = FontIcon(FontAwesomeSolid.INFO_CIRCLE).apply { iconSize = 12 }
+            Tooltip.install(icon, Tooltip(tip))
+            return HBox(5.0, Label(text), icon).apply { alignment = Pos.CENTER_LEFT }
+        }
+
+        val modeRow = HBox(8.0, manualBtn, timedBtn).apply { alignment = Pos.CENTER_LEFT }
+
+        val topGrid = GridPane().apply {
+            hgap = 12.0; vgap = 10.0
+            columnConstraints.addAll(
+                ColumnConstraints(210.0, 220.0, 240.0),
+                ColumnConstraints().also { it.hgrow = Priority.ALWAYS }
+            )
+            addRow(0, Label("Group messages into chunks of"), chunkSpinner)
+            addRow(1, Label("Producer Mode"), modeRow)
+        }
+
+        val timerGrid = GridPane().apply {
+            hgap = 12.0; vgap = 8.0
+            columnConstraints.addAll(
+                ColumnConstraints(160.0, 180.0, 200.0),
+                ColumnConstraints().also { it.hgrow = Priority.ALWAYS }
+            )
+            addRow(0, infoLabel("Interval (ms)", "Delay between each message send"), intervalSpinner)
+            addRow(1, infoLabel("Max jitter (ms)", "Random additional delay added to each interval"), jitterSpinner)
+        }
+
+        val lifecycleGrid = GridPane().apply {
+            hgap = 12.0; vgap = 8.0
+            columnConstraints.addAll(
+                ColumnConstraints(160.0, 200.0, 220.0),
+                ColumnConstraints().also { it.hgrow = Priority.ALWAYS }
+            )
+            addRow(0, Label("Elapsed time (ms)"), elapsedSpinner)
+            addRow(1, Label("Number of message produced"), msgCountSpinner)
+        }
+
+        val timedPane = VBox(10.0).apply {
+            padding = Insets(12.0, 0.0, 0.0, 0.0)
+            children.addAll(
+                Label("Timer options").apply { style = "-fx-font-weight: bold;" },
+                timerGrid,
+                Separator(),
+                Label("Lifecycle options").apply { style = "-fx-font-weight: bold;" },
+                Label("Shutdown the producer automatically").apply { style = "-fx-text-fill: -color-fg-muted;" },
+                lifecycleGrid
+            )
+            visibleProperty().bind(timedBtn.selectedProperty())
+            managedProperty().bind(timedBtn.selectedProperty())
+        }
+
+        val content = VBox(10.0).apply {
+            padding = Insets(12.0)
+            children.addAll(topGrid, Separator(), timedPane)
+        }
+        return Tab("Flow", content)
     }
 
     // ── Headers tab ───────────────────────────────────────────────────────────
@@ -314,37 +402,84 @@ class ProducerDialog(
         }.also { it.isDaemon = true }.start()
     }
 
+    private fun updateSendButton(timed: Boolean, running: Boolean) {
+        sendBtn.styleClass.removeAll("accent", "danger")
+        when {
+            timed && running -> { sendBtn.text = "Stop";  sendBtn.styleClass.add("danger") }
+            timed            -> { sendBtn.text = "Start"; sendBtn.styleClass.add("accent") }
+            else             -> { sendBtn.text = "Send";  sendBtn.styleClass.add("accent") }
+        }
+    }
+
     private fun sendMessage() {
         val topic = topicCombo.value?.trim() ?: ""
         if (topic.isBlank()) { appendFailure("Topic name is required"); return }
         val value = valueArea.text
         if (value.isBlank()) { appendFailure("Message value is required"); return }
+        val chunk = chunkSpinner.value
+        Thread { repeat(chunk) { doSend(topic, value) } }.also { it.isDaemon = true }.start()
+    }
 
+    private fun startFlow() {
+        val topic = topicCombo.value?.trim() ?: ""
+        if (topic.isBlank()) { appendFailure("Topic name is required"); return }
+        val value = valueArea.text
+        if (value.isBlank()) { appendFailure("Message value is required"); return }
+
+        val delayMs    = intervalSpinner.value.toLong().coerceAtLeast(10L)
+        val jitterMs   = jitterSpinner.value.toLong()
+        val maxCount   = msgCountSpinner.value.toLong().let { if (it <= 0L) Long.MAX_VALUE else it }
+        val maxElapsed = elapsedSpinner.value.toLong()
+        val chunk      = chunkSpinner.value
+
+        flowRunning = true
+        updateSendButton(timed = true, running = true)
+
+        Thread {
+            var sent = 0L
+            val startTime = System.currentTimeMillis()
+            while (flowRunning && sent < maxCount) {
+                if (maxElapsed > 0L && System.currentTimeMillis() - startTime >= maxElapsed) break
+                repeat(chunk) { if (flowRunning) doSend(topic, value) }
+                sent += chunk
+                if (flowRunning && sent < maxCount) {
+                    val sleep = delayMs + if (jitterMs > 0L) (Math.random() * jitterMs).toLong() else 0L
+                    Thread.sleep(sleep)
+                }
+            }
+            Platform.runLater {
+                flowRunning = false
+                updateSendButton(timed = true, running = false)
+            }
+        }.also { it.isDaemon = true }.start()
+    }
+
+    private fun stopFlow() {
+        flowRunning = false
+        updateSendButton(timed = true, running = false)
+    }
+
+    private fun doSend(topic: String, value: String) {
         val svc       = producerService ?: KafkaProducerService(cluster).also { producerService = it }
         val headers   = headersItems.associate { it.first to it.second }
         val partition = partitionField.text.trim().toIntOrNull()
         val key       = keyArea.text.takeIf { it.isNotBlank() }
         val startMs   = System.currentTimeMillis()
-
-        Thread {
-            try {
-                val (actualPartition, offset) = svc.send(
-                    topic       = topic,
-                    key         = key,
-                    value       = value,
-                    keyFormat   = keyFormatBox.value.uppercase(),
-                    valueFormat = valueFormatBox.value.uppercase(),
-                    partition   = partition,
-                    headers     = headers
-                )
-                val latencyMs = System.currentTimeMillis() - startMs
-                Platform.runLater {
-                    appendSuccess(topic, actualPartition, offset, latencyMs, key, value)
-                }
-            } catch (e: Exception) {
-                Platform.runLater { appendFailure(e.message ?: "Unknown error") }
-            }
-        }.also { it.isDaemon = true }.start()
+        try {
+            val (actualPartition, offset) = svc.send(
+                topic       = topic,
+                key         = key,
+                value       = value,
+                keyFormat   = keyFormatBox.value.uppercase(),
+                valueFormat = valueFormatBox.value.uppercase(),
+                partition   = partition,
+                headers     = headers
+            )
+            val latencyMs = System.currentTimeMillis() - startMs
+            Platform.runLater { appendSuccess(topic, actualPartition, offset, latencyMs, key, value) }
+        } catch (e: Exception) {
+            Platform.runLater { appendFailure(e.message ?: "Unknown error") }
+        }
     }
 
     private fun appendSuccess(topic: String, partition: Int, offset: Long, latencyMs: Long, key: String?, value: String) {
