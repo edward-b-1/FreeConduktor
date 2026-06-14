@@ -2,6 +2,7 @@ package com.freeconductor.ui.topics
 
 import atlantafx.base.controls.ToggleSwitch
 import com.freeconductor.ui.util.applyAppIcon
+import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
@@ -96,7 +97,11 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
                     styleClass.add("borderless-titled-pane")
                     expandedProperty().addListener { _, _, expanded ->
                         val window = dialogPane.scene?.window ?: return@addListener
-                        if (expanded) window.height = 600.0 else window.sizeToScene()
+                        if (expanded) {
+                            window.height = 600.0
+                        } else {
+                            Platform.runLater { window.sizeToScene() }
+                        }
                     }
                 }
             )
