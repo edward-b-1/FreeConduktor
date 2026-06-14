@@ -6,11 +6,35 @@ official Kafka documentation strings used by Conduktor Desktop 2.24.9.
 **FreeConduktor source:** `KAFKA_TOPIC_DESCRIPTIONS` map in `CreateTopicDialog.kt`
 
 **Kafka/Conduktor source:** `org.apache.kafka.common.config.TopicConfig` and
-`kafka.log.LogConfig$` from `kafka_2.13-3.2.0.jar` / `kafka-clients-3.2.0.jar`
-(extracted from Conduktor Desktop 2.24.9 install). Conduktor fetches these
-strings at runtime from the broker via the `_DOC` suffix on each config key
-(e.g. `retention.ms_DOC`), so they match the broker's Kafka version exactly.
+`kafka.log.LogConfig$` from `kafka_2.13-3.2.0.jar` / `kafka-clients-3.2.0.jar`,
+bundled with Conduktor Desktop 2.24.9 at `C:\Program Files\Conduktor\app\`.
 HTML tags stripped for readability.
+
+### How the strings were extracted
+
+JAR files are ZIP archives, so both JARs were unzipped into a temp directory.
+Compiled `.class` files store all string literals in a *constant pool* — a table
+at the top of the bytecode. Running `javap -verbose` on the relevant class files
+dumps the entire constant pool, where the doc strings appear verbatim as `String`
+constants alongside the property name constants that precede them. The output was
+then grepped for known property names to locate each adjacent doc string.
+
+- 26 of the 28 strings came from `TopicConfig.class` in `kafka-clients-3.2.0.jar`
+- `leader.replication.throttled.replicas` and `follower.replication.throttled.replicas`
+  came from `LogConfig$.class` in `kafka_2.13-3.2.0.jar`
+
+### How Conduktor uses these strings at runtime
+
+Conduktor does **not** use hardcoded strings. It queries the live broker using the
+`_DOC` suffix convention: calling `describeConfigs()` with a key like
+`retention.ms_DOC` returns the documentation string for that property as reported
+by the running broker. This means the descriptions are always accurate for whatever
+Kafka version the broker is running. The strings extracted above happen to be what
+Kafka 3.2.0 returns — a different broker version would return different text.
+
+This is the basis for the TODO item to fetch descriptions live from the cluster
+rather than relying on the hardcoded `KAFKA_TOPIC_DESCRIPTIONS` map in
+`CreateTopicDialog.kt`.
 
 ---
 
