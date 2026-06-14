@@ -475,15 +475,21 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
     fun getBrokerCount(): Int =
         adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS).size.coerceAtLeast(1)
 
-    fun getBrokerTopicDefaults(): Map<String, String> {
+    fun getBrokerTopicDefaults(): Map<String, String> = getBrokerTopicInfo().first
+
+    fun getBrokerTopicInfo(): Pair<Map<String, String>, Set<String>> {
         val nodes = adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS)
-        if (nodes.isEmpty()) return emptyMap()
+        if (nodes.isEmpty()) return Pair(emptyMap(), emptySet())
         val resource = ConfigResource(ConfigResource.Type.BROKER, nodes.first().id().toString())
         val config = adminClient.describeConfigs(listOf(resource)).all()
-            .get(15, TimeUnit.SECONDS)[resource] ?: return emptyMap()
-        return TOPIC_CONFIG_KEYS.mapNotNull { key ->
+            .get(15, TimeUnit.SECONDS)[resource] ?: return Pair(emptyMap(), emptySet())
+        val defaults = TOPIC_CONFIG_KEYS.mapNotNull { key ->
             config.get(key)?.value()?.let { key to it }
         }.toMap()
+        val deprecated = TOPIC_CONFIG_KEYS.filter { key ->
+            config.get(key)?.documentation()?.startsWith("[DEPRECATED]") == true
+        }.toSet()
+        return Pair(defaults, deprecated)
     }
 
     companion object {

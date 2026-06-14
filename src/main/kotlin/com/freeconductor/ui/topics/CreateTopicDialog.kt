@@ -5,6 +5,7 @@ import com.freeconductor.service.KafkaAdminService
 import com.freeconductor.ui.util.applyAppIcon
 import javafx.application.Platform
 import javafx.beans.property.ReadOnlyObjectWrapper
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -82,10 +83,14 @@ private val KAFKA_TOPIC_DEFAULTS = linkedMapOf(
     "follower.replication.throttled.replicas" to ""
 )
 
+// Known-deprecated keys as a static fallback; updated live from broker documentation() on connect.
+private val KAFKA_TOPIC_DEPRECATED_STATIC = setOf("message.format.version")
+
 private class TopicConfigRow(val key: String, kafkaDefault: String) {
-    val kafkaDefault  = SimpleStringProperty(kafkaDefault)
+    val kafkaDefault   = SimpleStringProperty(kafkaDefault)
     val brokerOverride = SimpleStringProperty("-")
     val topicOverride  = SimpleStringProperty("")
+    val deprecated     = SimpleBooleanProperty(key in KAFKA_TOPIC_DEPRECATED_STATIC)
 }
 
 class CreateTopicDialog(
@@ -209,17 +214,28 @@ class CreateTopicDialog(
     }
 
     private fun buildConfigTable(): TableView<TopicConfigRow> {
-        val propCol = TableColumn<TopicConfigRow, String>("Property").apply {
-            setCellValueFactory { SimpleStringProperty(it.value.key) }
+        val propCol = TableColumn<TopicConfigRow, TopicConfigRow>("Property").apply {
+            setCellValueFactory { ReadOnlyObjectWrapper(it.value) }
             setCellFactory {
-                object : TableCell<TopicConfigRow, String>() {
-                    private val link = Hyperlink().apply { isVisited = false }
-                    override fun updateItem(item: String?, empty: Boolean) {
+                object : TableCell<TopicConfigRow, TopicConfigRow>() {
+                    private val link  = Hyperlink().apply { isVisited = false }
+                    private val badge = Label("deprecated").apply { styleClass.add("topic-deprecated-badge") }
+                    private val box   = HBox(6.0, link, badge).apply { alignment = Pos.CENTER_LEFT }
+                    override fun updateItem(item: TopicConfigRow?, empty: Boolean) {
                         super.updateItem(item, empty)
                         if (empty || item == null) { graphic = null; tooltip = null; return }
-                        graphic = link.also { it.text = item }
-                        val desc = KAFKA_TOPIC_DESCRIPTIONS[item]
-                        tooltip = Tooltip(if (desc != null) "$item\n\n$desc" else item)
+                        link.text = item.key
+                        badge.isVisible  = item.deprecated.get()
+                        badge.isManaged  = item.deprecated.get()
+                        graphic = box
+                        val dep  = item.deprecated.get()
+                        val desc = KAFKA_TOPIC_DESCRIPTIONS[item.key]
+                        val tip  = buildString {
+                            if (dep) append("⚠ Deprecated\n\n")
+                            append(item.key)
+                            if (desc != null) append("\n\n$desc")
+                        }
+                        tooltip = Tooltip(tip)
                     }
                 }
             }
@@ -266,6 +282,7 @@ class CreateTopicDialog(
         configRows.forEach { row ->
             row.topicOverride.addListener { _ -> table.refresh() }
             row.brokerOverride.addListener { _ -> table.refresh() }
+            row.deprecated.addListener { _ -> table.refresh() }
         }
 
         return table
@@ -300,10 +317,11 @@ class CreateTopicDialog(
         val service = adminService ?: return
         Thread {
             try {
-                val defaults = service.getBrokerTopicDefaults()
+                val (defaults, deprecatedKeys) = service.getBrokerTopicInfo()
                 Platform.runLater {
                     configRows.forEach { row ->
                         row.brokerOverride.set(defaults[row.key] ?: "-")
+                        if (deprecatedKeys.contains(row.key)) row.deprecated.set(true)
                     }
                 }
             } catch (_: Exception) {}

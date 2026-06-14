@@ -466,6 +466,16 @@
 .broker-config-link:hover {
     -fx-underline: true;
 }
+/* ── Deprecated topic config badge ── */
+.topic-deprecated-badge {
+    -fx-padding: 1 5 1 5;
+    -fx-background-radius: 3;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-background-color: -color-warning-muted;
+    -fx-text-fill: -color-warning-fg;
+}
+
 .titled-pane.borderless-titled-pane {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
