@@ -8,7 +8,6 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.scene.input.MouseEvent
 import com.freeconductor.ui.util.applyAppIcon
@@ -192,9 +191,6 @@ class ProducerDialog(
         )
 
         stage.title = "Produce to Topic — ${cluster.name}"
-        ProducerDialog::class.java
-            .getResourceAsStream("/com/freeconductor/icons/free-conduktor-logo-32.png")
-            ?.let { stage.icons.add(Image(it)) }
         stage.scene = scene
         stage.isResizable = true
         stage.setOnCloseRequest { stopFlow(); producerService?.close() }
