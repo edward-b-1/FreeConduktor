@@ -93,7 +93,7 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
                     VBox(advancedConfigArea).apply { padding = Insets(8.0, 0.0, 0.0, 0.0) }
                 ).apply {
                     isExpanded = false
-                    style = "-fx-border-color: transparent;"
+                    styleClass.add("borderless-titled-pane")
                     expandedProperty().addListener { _, _, expanded ->
                         val window = dialogPane.scene?.window ?: return@addListener
                         if (expanded) window.height = 600.0 else window.sizeToScene()

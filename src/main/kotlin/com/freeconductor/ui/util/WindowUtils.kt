@@ -19,13 +19,21 @@ fun Stage.applyAppIcon() {
     }
 }
 
+private val APP_STYLESHEET =
+    WindowUtils::class.java.getResource("/com/freeconductor/styles.css")?.toExternalForm()
+
 fun Dialog<*>.applyAppIcon() {
     dialogPane.sceneProperty().addListener { _, _, scene ->
-        scene?.windowProperty()?.addListener { _, _, window ->
-            (window as? Stage)?.applyAppIcon()
+        if (scene != null) {
+            APP_STYLESHEET?.let { scene.stylesheets.add(it) }
+            scene.windowProperty().addListener { _, _, window ->
+                (window as? Stage)?.applyAppIcon()
+            }
         }
     }
 }
+
+private object WindowUtils
 
 fun Stage.centerOnActiveWindow() {
     if (owner == null) {
