@@ -19,6 +19,12 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+data class BrokerTopicInfo(
+    val defaults: Map<String, String>,
+    val deprecatedKeys: Set<String>,
+    val docs: Map<String, String>
+)
+
 class KafkaAdminService(private val clusterConfig: com.freeconductor.model.ClusterConfig) : AutoCloseable {
     private val logger = LoggerFactory.getLogger(KafkaAdminService::class.java)
     private val adminClient: AdminClient = createAdminClient()
@@ -475,21 +481,25 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
     fun getBrokerCount(): Int =
         adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS).size.coerceAtLeast(1)
 
-    fun getBrokerTopicDefaults(): Map<String, String> = getBrokerTopicInfo().first
+    fun getBrokerTopicDefaults(): Map<String, String> = getBrokerTopicInfo().defaults
 
-    fun getBrokerTopicInfo(): Pair<Map<String, String>, Set<String>> {
+    fun getBrokerTopicInfo(): BrokerTopicInfo {
         val nodes = adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS)
-        if (nodes.isEmpty()) return Pair(emptyMap(), emptySet())
+        if (nodes.isEmpty()) return BrokerTopicInfo(emptyMap(), emptySet(), emptyMap())
         val resource = ConfigResource(ConfigResource.Type.BROKER, nodes.first().id().toString())
         val config = adminClient.describeConfigs(listOf(resource)).all()
-            .get(15, TimeUnit.SECONDS)[resource] ?: return Pair(emptyMap(), emptySet())
+            .get(15, TimeUnit.SECONDS)[resource]
+            ?: return BrokerTopicInfo(emptyMap(), emptySet(), emptyMap())
         val defaults = TOPIC_CONFIG_KEYS.mapNotNull { key ->
             config.get(key)?.value()?.let { key to it }
         }.toMap()
         val deprecated = TOPIC_CONFIG_KEYS.filter { key ->
             config.get(key)?.documentation()?.startsWith("[DEPRECATED]") == true
         }.toSet()
-        return Pair(defaults, deprecated)
+        val docs = TOPIC_CONFIG_KEYS.mapNotNull { key ->
+            config.get(key)?.documentation()?.takeIf { it.isNotBlank() }?.let { key to it }
+        }.toMap()
+        return BrokerTopicInfo(defaults, deprecated, docs)
     }
 
     companion object {
