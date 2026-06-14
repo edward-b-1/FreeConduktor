@@ -13,7 +13,7 @@ private val APP_ICON_NAMES = listOf(
 
 fun Stage.applyAppIcon() {
     APP_ICON_NAMES.forEach { name ->
-        Stage::class.java.getResourceAsStream("/com/freeconductor/icons/$name")?.let {
+        WindowUtils::class.java.getResourceAsStream("/com/freeconductor/icons/$name")?.let {
             icons.add(Image(it))
         }
     }
