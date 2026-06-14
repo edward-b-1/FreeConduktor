@@ -134,6 +134,7 @@ class CreateTopicDialog(
         ).apply {
             isExpanded = false
             isAnimated = false
+            maxHeight = Double.MAX_VALUE
             styleClass.add("borderless-titled-pane")
             style = "-fx-background-color: transparent; -fx-background-insets: 0; -fx-background-radius: 0; -fx-border-color: transparent; -fx-border-width: 0;"
             expandedProperty().addListener { _, _, expanded ->
@@ -149,6 +150,7 @@ class CreateTopicDialog(
 
         val content = VBox(14.0).apply {
             padding = Insets(16.0, 20.0, 8.0, 20.0)
+            maxHeight = Double.MAX_VALUE
             children.addAll(
                 formRow("Name", nameField),
                 HBox(16.0).apply {
