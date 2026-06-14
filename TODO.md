@@ -37,6 +37,7 @@
   - [ ] Per-topic serde preferences (key serde, value serde, default from-offset)
   - [ ] Consumer/producer/admin client config overrides (timeouts, fetch sizes, etc.)
   - [ ] Favourite topics and consumer groups
+- [ ] **Make styles consistent** — audit the app against `STYLE-GUIDE.md` and converge on the documented house styles. Known divergences: detail-view titles use inline font sizes (20/22/24px) instead of the `.view-title` class (30px); muted small-text uses duplicated inline `style` strings instead of a shared class; some refresh buttons still use the "↻" glyph instead of a `FontAwesomeSolid.SYNC_ALT` icon; hardcoded hex colors outside the broker-badge legend should move to `-color-*` tokens.
 - [ ] **Advanced Configuration: fetch property descriptions from the live Kafka cluster** — Conduktor fetches official Kafka documentation strings at runtime by appending `_DOC` to each config key (e.g. querying `retention.ms_DOC` returns the full Kafka doc string for that property). This gives version-appropriate descriptions rather than hardcoded ones. See `reference/topic-config-tooltips.md` for the extracted strings and a comparison with the current FreeConduktor descriptions.
 
 ## Completed

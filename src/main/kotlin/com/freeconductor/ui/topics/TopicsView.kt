@@ -64,7 +64,7 @@ class TopicsView(
         val showInternalCheck = CheckBox("Show internal").apply {
             setOnAction { showInternalTopics = isSelected; refresh() }
         }
-        val createButton = Button("+ CREATE").apply {
+        val createButton = Button("CREATE", FontIcon(FontAwesomeSolid.PLUS).also { it.iconSize = 12 }).apply {
             styleClass.addAll("accent", "toolbar-action-btn")
             setOnAction { showCreateTopicDialog() }
         }
@@ -72,7 +72,7 @@ class TopicsView(
             styleClass.add("danger")
             setOnAction { deleteSelectedTopic() }
         }
-        val refreshButton = Button("↻ Refresh").apply { setOnAction { refresh() } }
+        val refreshButton = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply { setOnAction { refresh() } }
 
         // Title row
         val titleRow = HBox(8.0).apply {

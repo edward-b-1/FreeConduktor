@@ -63,9 +63,9 @@ class MainWindow(private val stage: Stage) {
     private lateinit var settingsBtn: MenuButton
 
     // ── Navigation history ────────────────────────────────────────────────
-    private val backStack = ArrayDeque<() -> Unit>()
-    private val forwardStack = ArrayDeque<() -> Unit>()
-    private var currentNav: (() -> Unit)? = null
+    private val backStack = ArrayDeque<() -> Boolean>()
+    private val forwardStack = ArrayDeque<() -> Boolean>()
+    private var currentNav: (() -> Boolean)? = null
 
     private val backBtn = Button("←").apply {
         styleClass.add("nav-btn")
@@ -82,12 +82,19 @@ class MainWindow(private val stage: Stage) {
     }
 
     /** Push current view onto the back stack and display [action] as the new current view. */
-    private fun navigate(action: () -> Unit) {
+    /**
+     * Runs [action] and, only if it reports success (the view actually loaded),
+     * records it in the back/forward history. A failed navigation (e.g. a feature
+     * that isn't configured) leaves history and the current view untouched.
+     * Returns whether the navigation was committed.
+     */
+    private fun navigate(action: () -> Boolean): Boolean {
+        if (!action()) return false
         currentNav?.let { backStack.addLast(it) }
         forwardStack.clear()
         currentNav = action
-        action()
         updateNavButtons()
+        return true
     }
 
     private fun navigateBack() {
@@ -409,7 +416,8 @@ class MainWindow(private val stage: Stage) {
     }
 
     private fun showView(viewName: String) {
-        navigate {
+        val previous = sidebar.activeView()
+        val loaded = navigate {
             sidebar.setActive(viewName)
             when (viewName) {
                 "overview" -> showOverview()
@@ -420,61 +428,70 @@ class MainWindow(private val stage: Stage) {
                 "security" -> showSecurityView()
                 "streams" -> showKafkaStreamsView()
                 "brokers" -> showBrokersView()
+                else -> false
             }
         }
+        // The view didn't load (e.g. not configured) — keep the prior selection
+        // highlighted so the list matches what's actually on screen.
+        if (!loaded) sidebar.setActive(previous)
     }
 
-    private fun showOverview() {
-        val cluster = currentCluster ?: return
-        val admin = adminService ?: return
+    private fun showOverview(): Boolean {
+        val cluster = currentCluster ?: return false
+        val admin = adminService ?: return false
         val view = OverviewView(cluster, admin, ::setStatus, ::showView)
         contentArea.children.setAll(view.root)
+        return true
     }
 
-    private fun showTopicsView() {
-        val cluster = currentCluster ?: return
-        val admin = adminService ?: return
+    private fun showTopicsView(): Boolean {
+        val cluster = currentCluster ?: return false
+        val admin = adminService ?: return false
         val view = TopicsView(cluster, admin, ::setStatus,
             onTopicSelected = { topic -> showTopicDetail(topic) }
         )
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
     private fun showTopicDetail(topic: com.freeconductor.model.TopicInfo) {
         navigate {
             sidebar.setActive("topics")
-            val cluster = currentCluster ?: return@navigate
-            val admin = adminService ?: return@navigate
+            val cluster = currentCluster ?: return@navigate false
+            val admin = adminService ?: return@navigate false
             val view = TopicDetailView(topic, cluster, admin, ::setStatus,
                 onBack = { navigateBack() }
             )
             contentArea.children.setAll(view.root)
+            true
         }
     }
 
-    private fun showConsumerGroupsView() {
-        val cluster = currentCluster ?: return
-        val admin = adminService ?: return
+    private fun showConsumerGroupsView(): Boolean {
+        val cluster = currentCluster ?: return false
+        val admin = adminService ?: return false
         val view = ConsumerGroupsView(cluster, admin, ::setStatus,
             onGroupSelected = { group -> showConsumerGroupDetail(group) }
         )
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
     private fun showConsumerGroupDetail(group: com.freeconductor.model.ConsumerGroupInfo) {
         navigate {
             sidebar.setActive("consumergroups")
-            val cluster = currentCluster ?: return@navigate
-            val admin = adminService ?: return@navigate
+            val cluster = currentCluster ?: return@navigate false
+            val admin = adminService ?: return@navigate false
             val view = ConsumerGroupDetailView(group, cluster, admin, ::setStatus)
             contentArea.children.setAll(view.root)
+            true
         }
     }
 
-    private fun showSchemaRegistryView() {
-        val cluster = currentCluster ?: return
+    private fun showSchemaRegistryView(): Boolean {
+        val cluster = currentCluster ?: return false
         if (cluster.schemaRegistryUrl.isNullOrBlank()) {
             Alert(Alert.AlertType.INFORMATION).apply {
                 title = "Schema Registry"
@@ -482,16 +499,17 @@ class MainWindow(private val stage: Stage) {
                 contentText = "Please edit the cluster configuration to add a Schema Registry URL."
                 showAndWait()
             }
-            return
+            return false
         }
         val service = SchemaRegistryService(cluster)
         val view = SchemaRegistryView(cluster, service, ::setStatus)
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
-    private fun showKafkaConnectView() {
-        val cluster = currentCluster ?: return
+    private fun showKafkaConnectView(): Boolean {
+        val cluster = currentCluster ?: return false
         if (cluster.kafkaConnectUrl.isNullOrBlank()) {
             Alert(Alert.AlertType.INFORMATION).apply {
                 title = "Kafka Connect"
@@ -499,44 +517,49 @@ class MainWindow(private val stage: Stage) {
                 contentText = "Please edit the cluster configuration to add a Kafka Connect URL."
                 showAndWait()
             }
-            return
+            return false
         }
         val service = KafkaConnectService(cluster)
         val view = KafkaConnectView(cluster, service, ::setStatus)
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
-    private fun showSecurityView() {
-        val cluster = currentCluster ?: return
-        val admin = adminService ?: return
+    private fun showSecurityView(): Boolean {
+        val cluster = currentCluster ?: return false
+        val admin = adminService ?: return false
         val view = SecurityView(cluster, admin, ::setStatus)
         contentArea.children.setAll(view.root)
+        return true
     }
 
-    private fun showKafkaStreamsView() {
-        val admin = adminService ?: return
+    private fun showKafkaStreamsView(): Boolean {
+        val admin = adminService ?: return false
         val view = KafkaStreamsView(admin, ::setStatus)
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
-    private fun showBrokersView() {
-        val cluster = currentCluster ?: return
-        val admin = adminService ?: return
+    private fun showBrokersView(): Boolean {
+        val cluster = currentCluster ?: return false
+        val admin = adminService ?: return false
         val view = BrokersView(cluster, admin, ::setStatus,
             onBrokerSelected = { broker -> showBrokerDetail(broker) }
         )
         contentArea.children.setAll(view.root)
         view.refresh()
+        return true
     }
 
     private fun showBrokerDetail(broker: com.freeconductor.model.BrokerInfo) {
         navigate {
             sidebar.setActive("brokers")
-            val admin = adminService ?: return@navigate
+            val admin = adminService ?: return@navigate false
             val view = BrokerDetailView(broker, admin, ::setStatus)
             contentArea.children.setAll(view.root)
+            true
         }
     }
 

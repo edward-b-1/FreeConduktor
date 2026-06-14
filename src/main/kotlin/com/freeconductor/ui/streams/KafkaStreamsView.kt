@@ -11,6 +11,8 @@ import javafx.scene.control.*
 import javafx.scene.layout.*
 import javafx.scene.paint.Color
 import javafx.scene.text.FontWeight
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class KafkaStreamsView(
     private val adminService: KafkaAdminService,
@@ -41,7 +43,7 @@ class KafkaStreamsView(
             styleClass.add("view-title")
         }
 
-        val refreshButton = Button("↻ Refresh").apply {
+        val refreshButton = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
             setOnAction { refresh() }
         }
 

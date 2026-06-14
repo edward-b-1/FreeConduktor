@@ -10,6 +10,8 @@ import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class KafkaConnectView(
     private val cluster: ClusterConfig,
@@ -68,7 +70,7 @@ class KafkaConnectView(
     }
 
     private fun buildToolbar(): HBox {
-        val createButton = Button("+ Create Connector").apply {
+        val createButton = Button("Create Connector", FontIcon(FontAwesomeSolid.PLUS).also { it.iconSize = 12 }).apply {
             styleClass.add("accent")
             setOnAction { showCreateDialog() }
         }

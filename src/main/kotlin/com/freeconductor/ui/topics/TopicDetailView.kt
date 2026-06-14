@@ -159,7 +159,7 @@ class TopicDetailView(
                 },
                 buildMarqueeTitle(topic.name),
                 consumeBtn, produceBtn, deleteBtn,
-                Button("↻ Refresh").apply { minWidth = Button.USE_PREF_SIZE; setOnAction { loadData() } }
+                Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply { minWidth = Button.USE_PREF_SIZE; setOnAction { loadData() } }
             )
         }
 

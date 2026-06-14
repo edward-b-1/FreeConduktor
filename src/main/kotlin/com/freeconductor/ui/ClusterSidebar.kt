@@ -128,11 +128,20 @@ class ClusterSidebar(
     fun triggerAddCluster() = showAddClusterDialog()
 
     private fun createNavButton(label: String, viewName: String, icon: FontAwesomeSolid) =
-        Button(label, FontIcon(icon).also { it.iconSize = 14 }).apply {
+        // FontAwesome glyphs have different intrinsic widths, which would push the labels
+        // to different x-positions. Pin every icon into a fixed-width slot so the text in
+        // all nav buttons lines up in a single column.
+        Button(label, StackPane(FontIcon(icon).also { it.iconSize = 14 }).apply {
+            minWidth = 22.0; prefWidth = 22.0; maxWidth = 22.0
+            alignment = Pos.CENTER
+        }).apply {
             maxWidth = Double.MAX_VALUE
             styleClass.add("nav-button")
             contentDisplay = ContentDisplay.LEFT
-            setOnAction { activeView = viewName; refreshNavButtonStyles(); onNavigate(viewName) }
+            // Don't set the active highlight here — let the navigation result decide.
+            // showView() sets it only if the target view actually loads, so a failed
+            // navigation (e.g. Schema Registry not configured) leaves the highlight put.
+            setOnAction { onNavigate(viewName) }
         }.also { navButtons.add(viewName to it) }
 
     private fun refreshNavButtonStyles() {
@@ -142,7 +151,9 @@ class ClusterSidebar(
         }
     }
 
-    fun setActive(viewName: String) { activeView = viewName; refreshNavButtonStyles() }
+    fun setActive(viewName: String?) { activeView = viewName; refreshNavButtonStyles() }
+
+    fun activeView(): String? = activeView
 
     fun setConnected(cluster: ClusterConfig) {
         connectedCluster = cluster

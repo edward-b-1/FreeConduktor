@@ -11,6 +11,8 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class SecurityView(
     private val cluster: ClusterConfig,
@@ -73,7 +75,7 @@ class SecurityView(
             })
         }
 
-        val createButton = Button("+ Create Quota").apply {
+        val createButton = Button("Create Quota", FontIcon(FontAwesomeSolid.PLUS).also { it.iconSize = 12 }).apply {
             styleClass.add("accent")
             setOnAction { showCreateQuotaDialog() }
         }
@@ -83,7 +85,7 @@ class SecurityView(
             setOnAction { deleteSelectedQuota() }
         }
 
-        val refreshButton = Button("↻ Refresh").apply {
+        val refreshButton = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
             setOnAction { refreshQuotas() }
         }
 

@@ -9,6 +9,8 @@ import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class AclView(
     private val cluster: ClusterConfig,
@@ -52,7 +54,7 @@ class AclView(
             })
         }
 
-        val createButton = Button("+ Create ACL").apply {
+        val createButton = Button("Create ACL", FontIcon(FontAwesomeSolid.PLUS).also { it.iconSize = 12 }).apply {
             styleClass.add("accent")
             setOnAction { showCreateDialog() }
         }

@@ -11,6 +11,8 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class BrokersView(
     private val cluster: ClusterConfig,
@@ -36,11 +38,10 @@ class BrokersView(
             children.addAll(
                 Label("BROKERS").apply {
                     styleClass.addAll("view-title")
-                    style = "-fx-font-size: 24px;"
                     minWidth = Label.USE_PREF_SIZE
                 },
                 Region().apply { HBox.setHgrow(this, Priority.ALWAYS) },
-                Button("↻ Refresh").apply {
+                Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
                     minWidth = Button.USE_PREF_SIZE
                     setOnAction { refresh() }
                 }
