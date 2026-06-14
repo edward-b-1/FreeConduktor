@@ -8,6 +8,8 @@ import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 
 class ConsumerGroupsView(
     private val cluster: ClusterConfig,
@@ -48,7 +50,7 @@ class ConsumerGroupsView(
             else FXCollections.observableArrayList(groupItems.filter { it.groupId.contains(newVal, ignoreCase = true) })
         }
 
-        val refreshButton = Button("Refresh").apply {
+        val refreshButton = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
             styleClass.add("accent")
             setOnAction { refresh() }
         }

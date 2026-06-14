@@ -24,6 +24,7 @@ import com.freeconductor.ui.topics.TopicDetailView
 import com.freeconductor.ui.topics.TopicsView
 import javafx.application.Platform
 import javafx.geometry.Insets
+import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.geometry.Side
 import javafx.scene.control.*
@@ -35,9 +36,39 @@ import javafx.stage.Stage
 class MainWindow(private val stage: Stage) {
     val root: BorderPane = BorderPane()
     private val statusLabel = Label("Ready")
-    private val statusBar = HBox(statusLabel).apply {
+
+    // Connected-cluster indicator on the left of the status bar: gear icon + bootstrap
+    // address. Hidden until a cluster is connected.
+    private val connectionAddressLabel = Label()
+    private val connectionBox = HBox(
+        6.0,
+        FontIcon(FontAwesomeSolid.COGS).also { it.iconSize = 13 },
+        connectionAddressLabel
+    ).apply {
+        alignment = Pos.CENTER_LEFT
+        isVisible = false
+        isManaged = false
+    }
+
+    // Divider between the connection indicator and the status update text. Shown only
+    // while connected, in step with connectionBox.
+    private val connectionSeparator = Separator(Orientation.VERTICAL).apply {
+        isVisible = false
+        isManaged = false
+    }
+
+    // Clickable timezone display on the right of the status bar.
+    private val timezoneLabel = Label("Timezone: UTC").apply {
+        styleClass.add("status-timezone")
+        setOnMouseClicked { /* TODO: open timezone configuration window */ }
+    }
+
+    private val statusBar = HBox(12.0).apply {
         padding = Insets(4.0, 8.0, 4.0, 8.0)
         styleClass.add("status-bar")
+        alignment = Pos.CENTER_LEFT
+        val spacer = Region().also { HBox.setHgrow(it, Priority.ALWAYS) }
+        children.addAll(connectionBox, connectionSeparator, statusLabel, spacer, timezoneLabel)
     }
 
     private var currentCluster: ClusterConfig? = null
@@ -210,6 +241,10 @@ class MainWindow(private val stage: Stage) {
         autoRefreshTimeline?.stop(); autoRefreshTimeline = null
         currentCluster = null
         adminService = null
+        connectionBox.isVisible = false
+        connectionBox.isManaged = false
+        connectionSeparator.isVisible = false
+        connectionSeparator.isManaged = false
         consumerBtn.isDisable = true
         producerBtn.isDisable = true
         refreshBtn.isDisable = true
@@ -392,6 +427,11 @@ class MainWindow(private val stage: Stage) {
                 adminService = admin
                 Platform.runLater {
                     setStatus("Connected to ${cluster.name}  —  ${cluster.bootstrapServers}")
+                    connectionAddressLabel.text = "Connected to ${cluster.bootstrapServers}"
+                    connectionBox.isVisible = true
+                    connectionBox.isManaged = true
+                    connectionSeparator.isVisible = true
+                    connectionSeparator.isManaged = true
                     sidebar.setConnected(cluster)
                     consumerBtn.isDisable = false
                     producerBtn.isDisable = false

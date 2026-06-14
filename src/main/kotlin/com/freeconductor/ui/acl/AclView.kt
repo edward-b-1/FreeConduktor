@@ -64,7 +64,7 @@ class AclView(
             setOnAction { deleteSelectedAcl() }
         }
 
-        val refreshButton = Button("Refresh").apply {
+        val refreshButton = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
             setOnAction { refresh() }
         }
 

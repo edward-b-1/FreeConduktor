@@ -11,6 +11,8 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid
+import org.kordamp.ikonli.javafx.FontIcon
 import org.apache.kafka.common.TopicPartition
 
 class ConsumerGroupDetailView(
@@ -77,7 +79,7 @@ class ConsumerGroupDetailView(
             styleClass.add("danger")
             setOnAction { deleteGroup() }
         }
-        val refreshBtn = Button("Refresh").apply {
+        val refreshBtn = Button("Refresh", FontIcon(FontAwesomeSolid.SYNC_ALT).also { it.iconSize = 12 }).apply {
             styleClass.add("accent")
             setOnAction { loadDetails() }
         }
