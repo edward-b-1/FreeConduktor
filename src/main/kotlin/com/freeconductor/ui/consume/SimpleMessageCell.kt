@@ -18,10 +18,8 @@ class SimpleMessageCell(
 ) : ListCell<MessageRecord>() {
 
     private val metaLabel = Label()
-    private val keyLabel  = Label()
-    private val row1 = HBox(8.0, metaLabel, keyLabel).apply {
+    private val row1 = HBox(metaLabel).apply {
         alignment = Pos.CENTER_LEFT
-        HBox.setHgrow(keyLabel, Priority.NEVER)
     }
 
     // isWrapText works here because the ListView uses fixedCellSize, which means
@@ -52,23 +50,16 @@ class SimpleMessageCell(
         val mono       = monospaceFont.get()
         val baseFont   = if (mono) "-fx-font-family: monospace;" else ""
         val mutedStyle = "$baseFont-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted;"
-        val keyStyle   = "$baseFont-fx-font-size: 12px;"
         val valueStyle = "$baseFont-fx-font-size: 12px;"
 
         metaLabel.style  = mutedStyle
-        keyLabel.style   = keyStyle
         valueLabel.style = valueStyle
 
-        metaLabel.text = "${formatter.format(Instant.ofEpochMilli(msg.timestamp))}  " +
-                         "(P:${msg.partition}  #${msg.offset})"
-
-        if (msg.key != null) {
-            keyLabel.text      = msg.key
-            keyLabel.isVisible = true
-            keyLabel.isManaged = true
-        } else {
-            keyLabel.isVisible = false
-            keyLabel.isManaged = false
+        val ts = formatter.format(Instant.ofEpochMilli(msg.timestamp))
+        metaLabel.text = buildString {
+            append(ts)
+            append(" (P:${msg.partition} #${msg.offset})")
+            if (msg.key != null) append(" ${msg.key}")
         }
 
         // Collapse internal newlines so the value flows as a single paragraph.

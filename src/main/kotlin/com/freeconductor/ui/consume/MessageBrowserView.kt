@@ -51,7 +51,7 @@ class MessageBrowserView(
     private val fromGroup_   = RadioButton("Consumer group").apply { toggleGroup = fromGroup; userData = ConsumeFrom.CONSUMER_GROUP }
     private val specificOffsetField = TextField().apply { promptText = "0"; isDisable = true; maxWidth = Double.MAX_VALUE }
     private val specificDateField   = TextField().apply { promptText = "2024-01-15 10:30:00"; isDisable = true; maxWidth = Double.MAX_VALUE }
-    private val consumerGroupField  = TextField().apply { promptText = "my-group"; isDisable = true; maxWidth = Double.MAX_VALUE }
+    private val consumerGroupCombo  = ComboBox<String>().apply { isEditable = true; promptText = "my-group"; isDisable = true; maxWidth = Double.MAX_VALUE }
 
     // ── Filter controls ──────────────────────────────────────────────────────
     private val filterField = TextField().apply { promptText = "Filter key or value…"; maxWidth = Double.MAX_VALUE }
@@ -106,7 +106,7 @@ class MessageBrowserView(
     private val viewToggleBtn = ToggleButton(null, FontIcon(FontAwesomeSolid.COLUMNS)).apply {
         tooltip = Tooltip("Toggle table view")
     }
-    private val fontToggleBtn = ToggleButton("Mono").apply {
+    private val fontToggleBtn = ToggleButton("Monospace").apply {
         tooltip = Tooltip("Toggle monospace font")
     }
     private val columnsBtn = Button("Columns ▾").apply { isVisible = false; isManaged = false }
@@ -180,7 +180,7 @@ class MessageBrowserView(
             // Disable all conditional input fields too
             specificOffsetField.isDisable   = true
             specificDateField.isDisable     = true
-            consumerGroupField.isDisable    = true
+            consumerGroupCombo.isDisable    = true
             limitRecordsField.isDisable     = true
             limitDateField.isDisable        = true
             limitBytesField.isDisable       = true
@@ -191,7 +191,7 @@ class MessageBrowserView(
             val fromSel  = fromGroup.selectedToggle?.userData  as? ConsumeFrom
             specificOffsetField.isDisable = fromSel != ConsumeFrom.SPECIFIC_OFFSET
             specificDateField.isDisable   = fromSel != ConsumeFrom.SPECIFIC_DATETIME
-            consumerGroupField.isDisable  = fromSel != ConsumeFrom.CONSUMER_GROUP
+            consumerGroupCombo.isDisable  = fromSel != ConsumeFrom.CONSUMER_GROUP
 
             val limitSel = limitGroup.selectedToggle?.userData as? ConsumeLimit
             limitRecordsField.isDisable     = limitSel != ConsumeLimit.RECORD_COUNT
@@ -340,7 +340,7 @@ class MessageBrowserView(
                 fromDatetime,
                 specificDateField,
                 fromGroup_,
-                consumerGroupField
+                consumerGroupCombo
             )
         }
         return Tab("Format", tabScrollPane(content))
@@ -435,12 +435,31 @@ class MessageBrowserView(
 
     // ── Events ───────────────────────────────────────────────────────────────
 
+    private fun loadConsumerGroups() {
+        Thread {
+            try {
+                val groups = adminService.listConsumerGroups()
+                    .map { it.groupId }
+                    .filter { !it.startsWith("__") }
+                    .sorted()
+                Platform.runLater {
+                    val current = consumerGroupCombo.value
+                    consumerGroupCombo.items.setAll(groups)
+                    if (current != null) consumerGroupCombo.value = current
+                }
+            } catch (_: Exception) { }
+        }.also { it.isDaemon = true }.start()
+    }
+
     private fun wireEvents() {
         fromGroup.selectedToggleProperty().addListener { _, _, toggle ->
             specificOffsetField.isDisable = toggle?.userData != ConsumeFrom.SPECIFIC_OFFSET
             specificDateField.isDisable   = toggle?.userData != ConsumeFrom.SPECIFIC_DATETIME
-            consumerGroupField.isDisable  = toggle?.userData != ConsumeFrom.CONSUMER_GROUP
+            val isGroupMode = toggle?.userData == ConsumeFrom.CONSUMER_GROUP
+            consumerGroupCombo.isDisable  = !isGroupMode
+            if (isGroupMode) loadConsumerGroups()
         }
+
 
         val limitFieldMap = mapOf(
             ConsumeLimit.RECORD_COUNT               to limitRecordsField,
@@ -498,7 +517,7 @@ class MessageBrowserView(
             valueDeserializer = valueDeserBox.value,
             specificOffset   = specificOffsetField.text.trim().toLongOrNull(),
             specificTimestamp = fromTimestamp,
-            consumerGroup    = consumerGroupField.text.trim().takeIf { it.isNotBlank() }
+            consumerGroup    = consumerGroupCombo.value?.trim()?.takeIf { it.isNotBlank() }
         )
     }
 
