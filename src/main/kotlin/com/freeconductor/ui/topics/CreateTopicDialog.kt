@@ -174,7 +174,6 @@ class CreateTopicDialog(
             isAnimated = false
             maxHeight = Double.MAX_VALUE
             styleClass.add("borderless-titled-pane")
-            style = "-fx-background-color: transparent; -fx-background-insets: 0; -fx-background-radius: 0; -fx-border-color: transparent; -fx-border-width: 0;"
             expandedProperty().addListener { _, _, expanded ->
                 val window = dialogPane.scene?.window ?: return@addListener
                 if (expanded) {

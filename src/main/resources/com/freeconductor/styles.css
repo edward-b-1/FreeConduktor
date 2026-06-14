@@ -483,6 +483,15 @@
     -fx-border-color: transparent;
     -fx-border-width: 0;
 }
+/* AtlantaFX paints the header "border" as the first background layer of .title
+   (-color-border-default, then -color-bg-default inset 1px). Collapse it to a
+   single transparent layer so no box is drawn around the header. */
+.titled-pane.borderless-titled-pane > .title {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+}
+/* .content draws its own real border on left/right/bottom — clear it too. */
 .titled-pane.borderless-titled-pane > .content {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
