@@ -2,6 +2,7 @@ package com.freeconductor.ui.consume
 
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.service.KafkaAdminService
+import com.freeconductor.ui.util.applyAppIcon
 import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.scene.Scene
 import javafx.stage.Stage
@@ -28,9 +29,7 @@ class ConsumerWindow(
         )
         stage.title = if (topicName.isBlank()) "Consumer  [${cluster.name}]"
                       else "Consume from Topic: $topicName  [${cluster.name}]"
-        ConsumerWindow::class.java
-            .getResourceAsStream("/com/freeconductor/icons/free-conduktor-logo-32.png")
-            ?.let { stage.icons.add(javafx.scene.image.Image(it)) }
+        stage.applyAppIcon()
         stage.scene = scene
         stage.setOnCloseRequest { view.stopConsuming() }
         stage.centerOnActiveWindow()

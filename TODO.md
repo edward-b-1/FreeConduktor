@@ -21,7 +21,7 @@
   - [x] Missing collapsible "Advanced Configuration" `TitledPane` (replaces raw config text area)
   - [x] Button should be accented "CREATE TOPIC", not plain "Create"
   - [x] Window title should be "Create New Topic", not "Create Topic"
-- [ ] **Fix window icon** — all dialog windows should display the application icon in the title bar
+- [x] **Fix window icon** — all dialog windows should display the application icon in the title bar
 - [ ] **Status bar: connected cluster address** — show bootstrap address as a dedicated element when connected
 - [ ] **Status bar: gear icon** — add gear icon to the left of the cluster address (opens cluster settings/options)
 - [ ] **Status bar: Timezone display** — clickable "Timezone: UTC" on the right side; opens a config window to change the timezone used for message timestamps; persist selection

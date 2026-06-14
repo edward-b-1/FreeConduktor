@@ -1,6 +1,7 @@
 package com.freeconductor.ui.consume
 
 import com.freeconductor.model.*
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
@@ -38,6 +39,7 @@ class ConsumeSettingsDialog(
     init {
         title = "Consume Settings"
         headerText = "Configure message consumption for: $topicName"
+        applyAppIcon()
 
         val grid = GridPane().apply {
             hgap = 12.0

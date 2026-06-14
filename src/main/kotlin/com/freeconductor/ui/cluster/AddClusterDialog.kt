@@ -2,6 +2,7 @@ package com.freeconductor.ui.cluster
 
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.service.KafkaAdminService
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -64,6 +65,7 @@ class AddClusterDialog(private val existing: ClusterConfig?) : Dialog<ClusterCon
     init {
         title = if (existing == null) "Add Cluster" else "Edit Cluster: ${existing.name}"
         headerText = null
+        applyAppIcon()
 
         val tabPane = TabPane()
         tabPane.tabs.addAll(

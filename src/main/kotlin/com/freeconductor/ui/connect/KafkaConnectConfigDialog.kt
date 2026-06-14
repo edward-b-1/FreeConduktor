@@ -1,5 +1,6 @@
 package com.freeconductor.ui.connect
 
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
@@ -24,6 +25,7 @@ class KafkaConnectConfigDialog(
     init {
         title = if (existingName == null) "Create Connector" else "Edit Connector Config"
         headerText = if (existingName == null) "Create a new Kafka Connect connector" else "Edit configuration for: $existingName"
+        applyAppIcon()
 
         nameField.promptText = "connector-name"
         nameField.isDisable = existingName != null

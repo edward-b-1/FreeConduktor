@@ -1,6 +1,7 @@
 package com.freeconductor.ui.consumergroups
 
 import com.freeconductor.model.ConsumeFrom
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
@@ -27,6 +28,7 @@ class ResetOffsetsDialog(private val groupId: String) : Dialog<ResetOffsetsReque
     init {
         title = "Reset Consumer Group Offsets"
         headerText = "Reset offsets for consumer group: $groupId"
+        applyAppIcon()
 
         val grid = GridPane().apply {
             hgap = 12.0

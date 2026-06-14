@@ -1,6 +1,7 @@
 package com.freeconductor.ui.topics
 
 import atlantafx.base.controls.ToggleSwitch
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
@@ -48,6 +49,7 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
     init {
         title = "Create New Topic"
         headerText = null
+        applyAppIcon()
 
         updateHint(partitionsSpinner.value, replicationSpinner.value)
         partitionsSpinner.valueProperty().addListener { _, _, n -> updateHint(n, replicationSpinner.value) }
@@ -92,6 +94,10 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
                 ).apply {
                     isExpanded = false
                     style = "-fx-border-color: transparent;"
+                    expandedProperty().addListener { _, _, expanded ->
+                        val window = dialogPane.scene?.window ?: return@addListener
+                        if (expanded) window.height = 600.0 else window.sizeToScene()
+                    }
                 }
             )
         }
@@ -124,11 +130,11 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
         }
     }
 
-    private fun updateHint(partitions: Int, rf: Int) {
-        partitionsHint.text = if (rf <= 1)
+    private fun updateHint(partitions: Int, replicationFactor: Int) {
+        partitionsHint.text = if (replicationFactor <= 1)
             "You will create $partitions new partitions on your cluster"
         else
-            "You will create $partitions new partitions, replicated $rf times"
+            "You will create $partitions new partitions, replicated $replicationFactor times"
     }
 
     private fun formRow(labelText: String, field: Control) = HBox(16.0).apply {

@@ -9,6 +9,7 @@ import javafx.geometry.Pos
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import com.freeconductor.ui.util.applyAppIcon
 import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.stage.Modality
 import javafx.stage.Stage
@@ -100,9 +101,7 @@ class DynamicConfigDialog(
             isResizable = false
             initModality(Modality.APPLICATION_MODAL)
             ownerWindow?.let { initOwner(it) }
-            DynamicConfigDialog::class.java
-                .getResourceAsStream("/com/freeconductor/icons/free-conduktor-logo-32.png")
-                ?.let { icons.setAll(javafx.scene.image.Image(it)) }
+            applyAppIcon()
             scene = Scene(content, 480.0, 360.0)
         }
 

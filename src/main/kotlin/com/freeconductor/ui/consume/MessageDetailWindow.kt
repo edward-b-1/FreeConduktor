@@ -1,5 +1,6 @@
 package com.freeconductor.ui.consume
 
+import com.freeconductor.ui.util.applyAppIcon
 import com.freeconductor.ui.util.centerOnActiveWindow
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.model.MessageRecord
@@ -19,7 +20,7 @@ import javafx.stage.Stage
 import java.time.format.DateTimeFormatter
 
 class MessageDetailWindow(msg: MessageRecord, formatter: DateTimeFormatter, private val cluster: ClusterConfig) {
-    private val stage = Stage()
+    private val stage = Stage().also { it.applyAppIcon() }
 
     init {
         val tabPane = TabPane().apply {

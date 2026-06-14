@@ -11,6 +11,7 @@ import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.layout.*
 import javafx.scene.input.MouseEvent
+import com.freeconductor.ui.util.applyAppIcon
 import com.freeconductor.ui.util.centerOnActiveWindow
 import javafx.stage.FileChooser
 import javafx.stage.Stage
@@ -30,7 +31,7 @@ class ProducerDialog(
     private val initialHeaders: Map<String, String> = emptyMap(),
     private val adminService: KafkaAdminService? = null
 ) {
-    private val stage = Stage()
+    private val stage = Stage().also { it.applyAppIcon() }
 
     private val formats = listOf("String", "JSON", "Int", "Long", "Float", "Double", "Bytes (Base64)")
 

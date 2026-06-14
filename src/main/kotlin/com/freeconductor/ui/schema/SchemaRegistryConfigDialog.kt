@@ -1,5 +1,6 @@
 package com.freeconductor.ui.schema
 
+import com.freeconductor.ui.util.applyAppIcon
 import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.*
@@ -23,6 +24,7 @@ class SchemaRegistryConfigDialog(
     init {
         title = "Schema Registry Configuration"
         headerText = "Configure Schema Registry connection"
+        applyAppIcon()
 
         val grid = GridPane().apply {
             hgap = 12.0
