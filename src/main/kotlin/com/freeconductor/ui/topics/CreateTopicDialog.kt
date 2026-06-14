@@ -155,7 +155,11 @@ class CreateTopicDialog(
         title = "Create New Topic"
         headerText = null
         isResizable = true
+        // Height of the window while the Advanced pane is collapsed (just the form).
         var collapsedHeight = 0.0
+        // Height to restore the window to when the pane is (re)expanded. Seeded with a
+        // sensible default, then updated to whatever height the user last dragged to.
+        var expandedHeight = 620.0
         setOnShown { collapsedHeight = dialogPane.scene?.window?.height ?: 0.0 }
         applyAppIcon()
 
@@ -177,10 +181,19 @@ class CreateTopicDialog(
             expandedProperty().addListener { _, _, expanded ->
                 val window = dialogPane.scene?.window ?: return@addListener
                 if (expanded) {
+                    // First-ever expand: the current height IS the collapsed height.
+                    if (collapsedHeight <= 0) collapsedHeight = window.height
                     loadBrokerDefaults()
-                    window.height = 620.0
-                } else if (collapsedHeight > 0) {
-                    window.height = collapsedHeight
+                    // Defer: let the expand layout pass settle before resizing the window.
+                    Platform.runLater { window.height = expandedHeight }
+                } else {
+                    // Remember the height the user last had while expanded, so re-expanding
+                    // returns to their size rather than the default.
+                    if (window.height > collapsedHeight) expandedHeight = window.height
+                    // Defer: the pane's min-height is still "expanded" at this instant, which
+                    // would clamp a synchronous shrink. runLater fires after the collapse
+                    // layout pass drops the min-height, so the smaller height sticks.
+                    if (collapsedHeight > 0) Platform.runLater { window.height = collapsedHeight }
                 }
             }
         }
