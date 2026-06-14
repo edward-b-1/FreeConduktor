@@ -43,13 +43,15 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
     }
 
     private val advancedConfigArea = TextArea().apply {
-        promptText = "retention.ms=604800000\ncleanup.policy=delete"
+        promptText = "key=value (one per line)"
         prefHeight = 110.0
     }
 
     init {
         title = "Create New Topic"
         headerText = null
+        var collapsedHeight = 0.0
+        setOnShown { collapsedHeight = dialogPane.scene?.window?.height ?: 0.0 }
         applyAppIcon()
 
         updateHint(partitionsSpinner.value, replicationSpinner.value)
@@ -98,7 +100,8 @@ class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRe
                     styleClass.add("borderless-titled-pane")
                     expandedProperty().addListener { _, _, expanded ->
                         val window = dialogPane.scene?.window ?: return@addListener
-                        if (expanded) window.height = 600.0 else window.sizeToScene()
+                        if (expanded) window.height = 600.0
+                        else if (collapsedHeight > 0) window.height = collapsedHeight
                     }
                 }
             )

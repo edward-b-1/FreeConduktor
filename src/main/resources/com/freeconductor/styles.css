@@ -466,9 +466,10 @@
 .broker-config-link:hover {
     -fx-underline: true;
 }
-.borderless-titled-pane > .content {
+.titled-pane.borderless-titled-pane > .content {
     -fx-border-color: transparent;
     -fx-border-width: 0;
+    -fx-background-color: -color-bg-default;
 }
 /* Compound selector beats any single-class AtlantaFX rule */
 .ikonli-font-icon.broker-lock-icon {
