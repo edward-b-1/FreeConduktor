@@ -205,6 +205,17 @@
     -fx-border-width: 1 0 0 0;
     -fx-font-size: 12px;
 }
+.status-version {
+    -fx-text-fill: -color-accent-fg;
+    -fx-underline: false;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.status-version:hover {
+    -fx-underline: true;
+}
 .status-timezone {
     -fx-text-fill: -color-accent-fg;
     -fx-cursor: hand;

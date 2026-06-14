@@ -10,7 +10,7 @@ import com.freeconductor.ui.MainWindow
 class App : Application() {
     override fun start(stage: Stage) {
         Application.setUserAgentStylesheet(PrimerLight().userAgentStylesheet)
-        val mainWindow = MainWindow(stage)
+        val mainWindow = MainWindow(stage, hostServices)
         val scene = Scene(mainWindow.root, 1280.0, 860.0)
         scene.stylesheets.add(App::class.java.getResource("/com/freeconductor/styles.css")?.toExternalForm() ?: "")
         // Set window icon — load multiple sizes so the OS picks the best one per context

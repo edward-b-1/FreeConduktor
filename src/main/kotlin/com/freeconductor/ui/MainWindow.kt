@@ -1,5 +1,6 @@
 package com.freeconductor.ui
 
+import com.freeconductor.AppInfo
 import com.freeconductor.model.ClusterConfig
 import com.freeconductor.service.*
 import javafx.animation.KeyFrame
@@ -33,7 +34,10 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.*
 import javafx.stage.Stage
 
-class MainWindow(private val stage: Stage) {
+class MainWindow(
+    private val stage: Stage,
+    private val hostServices: javafx.application.HostServices? = null
+) {
     val root: BorderPane = BorderPane()
     private val statusLabel = Label("Ready")
 
@@ -63,12 +67,22 @@ class MainWindow(private val stage: Stage) {
         setOnMouseClicked { /* TODO: open timezone configuration window */ }
     }
 
+    // App version on the far right of the status bar — links to the GitHub releases page.
+    private val versionLink = Hyperlink("v${AppInfo.version}").apply {
+        styleClass.add("status-version")
+        isVisited = false
+        setOnAction { hostServices?.showDocument("https://github.com/edward-b-1/FreeConduktor/releases") }
+    }
+
     private val statusBar = HBox(12.0).apply {
         padding = Insets(4.0, 8.0, 4.0, 8.0)
         styleClass.add("status-bar")
         alignment = Pos.CENTER_LEFT
         val spacer = Region().also { HBox.setHgrow(it, Priority.ALWAYS) }
-        children.addAll(connectionBox, connectionSeparator, statusLabel, spacer, timezoneLabel)
+        children.addAll(
+            connectionBox, connectionSeparator, statusLabel, spacer,
+            timezoneLabel, Separator(Orientation.VERTICAL), versionLink
+        )
     }
 
     private var currentCluster: ClusterConfig? = null

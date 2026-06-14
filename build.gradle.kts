@@ -68,6 +68,25 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
+// ── Version resource ────────────────────────────────────────────────────────
+// Writes the Gradle project version into a resource the app reads at runtime, so
+// the version shown in the UI always matches the build (single source of truth).
+val generatedResourcesDir = layout.buildDirectory.dir("generated/resources")
+val generateVersionProperties by tasks.registering {
+    val outFile = generatedResourcesDir.map { it.file("freeconductor-version.properties") }
+    val ver = project.version.toString()
+    inputs.property("version", ver)
+    outputs.file(outFile)
+    doLast {
+        outFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("version=$ver\n")
+        }
+    }
+}
+sourceSets.named("main") { resources.srcDir(generatedResourcesDir) }
+tasks.named<ProcessResources>("processResources") { dependsOn(generateVersionProperties) }
+
 // ── Packaging ─────────────────────────────────────────────────────────────────
 // Produces a self-contained app image (portable zip) or MSI installer.
 // Both bundle a private JRE — no Java installation required on the target machine.
