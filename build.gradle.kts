@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.freeconductor"
-version = "0.1.14"
+version = "0.1.16"
 
 repositories {
     mavenCentral()
