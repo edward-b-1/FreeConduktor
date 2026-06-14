@@ -294,7 +294,7 @@ class TopicsView(
     // ── Create / Delete dialogs ───────────────────────────────────────────
 
     private fun showCreateTopicDialog() {
-        val dialog = CreateTopicDialog(brokerCount)
+        val dialog = CreateTopicDialog(brokerCount, adminService)
         dialog.showAndWait().ifPresent { request ->
             if (request.name.isBlank()) {
                 Alert(Alert.AlertType.WARNING).apply { title = "Validation"; contentText = "Topic name cannot be empty."; showAndWait() }

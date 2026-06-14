@@ -475,6 +475,30 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
     fun getBrokerCount(): Int =
         adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS).size.coerceAtLeast(1)
 
+    fun getBrokerTopicDefaults(): Map<String, String> {
+        val nodes = adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS)
+        if (nodes.isEmpty()) return emptyMap()
+        val resource = ConfigResource(ConfigResource.Type.BROKER, nodes.first().id().toString())
+        val config = adminClient.describeConfigs(listOf(resource)).all()
+            .get(15, TimeUnit.SECONDS)[resource] ?: return emptyMap()
+        return TOPIC_CONFIG_KEYS.mapNotNull { key ->
+            config.get(key)?.value()?.let { key to it }
+        }.toMap()
+    }
+
+    companion object {
+        val TOPIC_CONFIG_KEYS = listOf(
+            "min.insync.replicas", "retention.bytes", "retention.ms",
+            "compression.type", "delete.retention.ms", "file.delete.delay.ms",
+            "flush.messages", "flush.ms", "index.interval.bytes",
+            "max.message.bytes", "message.timestamp.difference.max.ms",
+            "message.timestamp.type", "min.cleanable.dirty.ratio",
+            "min.compaction.lag.ms", "max.compaction.lag.ms",
+            "preallocate", "segment.bytes", "segment.index.bytes",
+            "segment.jitter.ms", "segment.ms", "unclean.leader.election.enable"
+        )
+    }
+
     fun getClusterInfo(): String {
         val cluster = adminClient.describeCluster()
         val clusterId = cluster.clusterId().get(15, TimeUnit.SECONDS)
