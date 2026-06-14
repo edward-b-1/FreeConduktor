@@ -20,6 +20,37 @@ data class CreateTopicRequest(
     val configs: Map<String, String>
 )
 
+private val KAFKA_TOPIC_DESCRIPTIONS = mapOf(
+    "min.insync.replicas"                     to "Minimum replicas that must acknowledge a write for it to succeed (used with acks=all)",
+    "retention.bytes"                         to "Maximum size a partition can grow before old segments are discarded. -1 = unlimited",
+    "retention.ms"                            to "How long messages are retained. -1 = forever",
+    "compression.type"                        to "Compression codec for stored messages: producer, gzip, snappy, lz4, zstd, or uncompressed",
+    "delete.retention.ms"                     to "How long delete tombstone markers are kept on compacted topics before being removed",
+    "file.delete.delay.ms"                    to "Time to wait before deleting a segment file from disk after it is marked for deletion",
+    "flush.messages"                          to "Number of messages written before forcing an fsync to disk. Higher values improve throughput",
+    "flush.ms"                                to "Maximum time between forced fsyncs. Higher values improve throughput at the cost of durability",
+    "index.interval.bytes"                    to "How frequently an offset entry is added to the segment index (roughly every N bytes)",
+    "local.retention.bytes"                   to "Max bytes retained locally before older data is moved to remote (tiered) storage. -2 = use retention.bytes",
+    "local.retention.ms"                      to "Max time data is kept locally before being offloaded to remote storage. -2 = use retention.ms",
+    "max.compaction.lag.ms"                   to "Maximum time a message can remain ineligible for log compaction",
+    "max.message.bytes"                       to "Largest compressed record batch the broker will accept for this topic",
+    "message.downconversion.enable"           to "Allow the broker to down-convert message formats for older consumer clients",
+    "message.format.version"                  to "Override the message format version written to the log (deprecated in Kafka 3.x)",
+    "message.timestamp.difference.max.ms"     to "Max allowed difference between broker time and message timestamp before the message is rejected",
+    "message.timestamp.type"                  to "Whether the timestamp is set by the producer (CreateTime) or stamped by the broker (LogAppendTime)",
+    "min.cleanable.dirty.ratio"               to "Minimum ratio of dirty log to total log that triggers compaction to run",
+    "min.compaction.lag.ms"                   to "Minimum time a message must remain uncompacted in the log",
+    "preallocate"                             to "Pre-allocate log segment files on disk to avoid fragmentation",
+    "remote.storage.enable"                   to "Enable tiered remote storage for this topic (requires remote storage to be configured on the broker)",
+    "segment.bytes"                           to "Target size of a single log segment file. A new segment is rolled when this size is reached",
+    "segment.index.bytes"                     to "Maximum size of the offset index for a single log segment",
+    "segment.jitter.ms"                       to "Random jitter applied to segment roll time to avoid many segments rolling simultaneously",
+    "segment.ms"                              to "Maximum time before the log is forced to roll to a new segment, even if segment.bytes is not reached",
+    "unclean.leader.election.enable"          to "Allow out-of-sync replicas to become leader when no in-sync replica is available (risks data loss)",
+    "leader.replication.throttled.replicas"   to "Comma-separated list of partition:broker pairs throttled on the leader side during reassignment",
+    "follower.replication.throttled.replicas" to "Comma-separated list of partition:broker pairs throttled on the follower side during reassignment"
+)
+
 private val KAFKA_TOPIC_DEFAULTS = linkedMapOf(
     "min.insync.replicas"                    to "1",
     "retention.bytes"                        to "-1",
@@ -100,6 +131,7 @@ class CreateTopicDialog(
             isExpanded = false
             isAnimated = false
             styleClass.add("borderless-titled-pane")
+            style = "-fx-background-color: transparent; -fx-background-insets: 0; -fx-background-radius: 0; -fx-border-color: transparent; -fx-border-width: 0;"
             expandedProperty().addListener { _, _, expanded ->
                 val window = dialogPane.scene?.window ?: return@addListener
                 if (expanded) {
@@ -179,7 +211,8 @@ class CreateTopicDialog(
                         super.updateItem(item, empty)
                         if (empty || item == null) { graphic = null; tooltip = null; return }
                         graphic = link.also { it.text = item }
-                        tooltip = Tooltip(item)
+                        val desc = KAFKA_TOPIC_DESCRIPTIONS[item]
+                        tooltip = Tooltip(if (desc != null) "$item\n\n$desc" else item)
                     }
                 }
             }
