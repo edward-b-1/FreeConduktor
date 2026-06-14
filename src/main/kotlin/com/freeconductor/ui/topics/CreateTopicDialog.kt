@@ -15,7 +15,7 @@ data class CreateTopicRequest(
     val configs: Map<String, String>
 )
 
-class CreateTopicDialog : Dialog<CreateTopicRequest>() {
+class CreateTopicDialog(private val brokerCount: Int = 1) : Dialog<CreateTopicRequest>() {
 
     private val nameField = TextField().apply {
         promptText = "My new Topic name"
@@ -26,7 +26,7 @@ class CreateTopicDialog : Dialog<CreateTopicRequest>() {
         prefWidth = 90.0
     }
 
-    private val replicationSpinner = Spinner<Int>(1, 100, 1).apply {
+    private val replicationSpinner = Spinner<Int>(1, brokerCount, 1).apply {
         isEditable = true
         prefWidth = 90.0
     }
@@ -49,12 +49,12 @@ class CreateTopicDialog : Dialog<CreateTopicRequest>() {
         title = "Create New Topic"
         headerText = null
 
-        updateHint(partitionsSpinner.value)
-        partitionsSpinner.valueProperty().addListener { _, _, n -> updateHint(n) }
+        updateHint(partitionsSpinner.value, replicationSpinner.value)
+        partitionsSpinner.valueProperty().addListener { _, _, n -> updateHint(n, replicationSpinner.value) }
+        replicationSpinner.valueProperty().addListener { _, _, n -> updateHint(partitionsSpinner.value, n) }
 
         val content = VBox(14.0).apply {
             padding = Insets(16.0, 20.0, 8.0, 20.0)
-            prefWidth = 540.0
 
             children.addAll(
                 formRow("Name", nameField),
@@ -67,7 +67,7 @@ class CreateTopicDialog : Dialog<CreateTopicRequest>() {
                     )
                 },
 
-                HBox(12.0).apply {
+                HBox(16.0).apply {
                     alignment = Pos.CENTER_LEFT
                     children.addAll(
                         Label("Replication Factor").apply { minWidth = 150.0 },
@@ -89,11 +89,16 @@ class CreateTopicDialog : Dialog<CreateTopicRequest>() {
                 TitledPane(
                     "Advanced Configuration",
                     VBox(advancedConfigArea).apply { padding = Insets(8.0, 0.0, 0.0, 0.0) }
-                ).apply { isExpanded = false }
+                ).apply {
+                    isExpanded = false
+                    style = "-fx-border-color: transparent;"
+                }
             )
         }
 
         dialogPane.content = content
+        dialogPane.prefWidth = 800.0
+        dialogPane.minWidth = 800.0
 
         val createBtn = ButtonType("CREATE TOPIC", ButtonBar.ButtonData.OK_DONE)
         dialogPane.buttonTypes.addAll(createBtn, ButtonType.CANCEL)
@@ -119,8 +124,11 @@ class CreateTopicDialog : Dialog<CreateTopicRequest>() {
         }
     }
 
-    private fun updateHint(partitions: Int) {
-        partitionsHint.text = "You will create $partitions new partitions on your cluster"
+    private fun updateHint(partitions: Int, rf: Int) {
+        partitionsHint.text = if (rf <= 1)
+            "You will create $partitions new partitions on your cluster"
+        else
+            "You will create $partitions new partitions, replicated $rf times"
     }
 
     private fun formRow(labelText: String, field: Control) = HBox(16.0).apply {

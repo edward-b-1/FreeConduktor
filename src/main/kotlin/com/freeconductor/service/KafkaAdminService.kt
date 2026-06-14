@@ -472,6 +472,9 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
         adminClient.deleteAcls(listOf(bindingFilter)).all().get(15, TimeUnit.SECONDS)
     }
 
+    fun getBrokerCount(): Int =
+        adminClient.describeCluster().nodes().get(15, TimeUnit.SECONDS).size.coerceAtLeast(1)
+
     fun getClusterInfo(): String {
         val cluster = adminClient.describeCluster()
         val clusterId = cluster.clusterId().get(15, TimeUnit.SECONDS)

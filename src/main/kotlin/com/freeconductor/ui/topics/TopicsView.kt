@@ -30,6 +30,7 @@ class TopicsView(
     private val topicTable = TableView(filteredTopics)
     private val progressIndicator = ProgressIndicator()
     private var showInternalTopics = false
+    private var brokerCount = 1
 
     // Stat box labels
     private val statTopicsValue     = Label("—")
@@ -293,7 +294,7 @@ class TopicsView(
     // ── Create / Delete dialogs ───────────────────────────────────────────
 
     private fun showCreateTopicDialog() {
-        val dialog = CreateTopicDialog()
+        val dialog = CreateTopicDialog(brokerCount)
         dialog.showAndWait().ifPresent { request ->
             if (request.name.isBlank()) {
                 Alert(Alert.AlertType.WARNING).apply { title = "Validation"; contentText = "Topic name cannot be empty."; showAndWait() }
@@ -342,6 +343,7 @@ class TopicsView(
         Thread {
             try {
                 val topics = adminService.listTopics().filter { showInternalTopics || !it.isInternal }
+                brokerCount = adminService.getBrokerCount()
                 Platform.runLater {
                     topicItems.setAll(topics)
                     progressIndicator.isVisible = false
