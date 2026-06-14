@@ -491,11 +491,14 @@ class KafkaAdminService(private val clusterConfig: com.freeconductor.model.Clust
             "min.insync.replicas", "retention.bytes", "retention.ms",
             "compression.type", "delete.retention.ms", "file.delete.delay.ms",
             "flush.messages", "flush.ms", "index.interval.bytes",
-            "max.message.bytes", "message.timestamp.difference.max.ms",
-            "message.timestamp.type", "min.cleanable.dirty.ratio",
-            "min.compaction.lag.ms", "max.compaction.lag.ms",
-            "preallocate", "segment.bytes", "segment.index.bytes",
-            "segment.jitter.ms", "segment.ms", "unclean.leader.election.enable"
+            "local.retention.bytes", "local.retention.ms", "max.compaction.lag.ms",
+            "max.message.bytes", "message.downconversion.enable", "message.format.version",
+            "message.timestamp.difference.max.ms", "message.timestamp.type",
+            "min.cleanable.dirty.ratio", "min.compaction.lag.ms",
+            "preallocate", "remote.storage.enable",
+            "segment.bytes", "segment.index.bytes", "segment.jitter.ms", "segment.ms",
+            "unclean.leader.election.enable",
+            "leader.replication.throttled.replicas", "follower.replication.throttled.replicas"
         )
     }
 

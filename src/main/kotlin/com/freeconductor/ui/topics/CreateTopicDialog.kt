@@ -21,27 +21,34 @@ data class CreateTopicRequest(
 )
 
 private val KAFKA_TOPIC_DEFAULTS = linkedMapOf(
-    "min.insync.replicas"              to "1",
-    "retention.bytes"                  to "-1",
-    "retention.ms"                     to "604800000",
-    "compression.type"                 to "producer",
-    "delete.retention.ms"              to "86400000",
-    "file.delete.delay.ms"             to "60000",
-    "flush.messages"                   to "9223372036854775807",
-    "flush.ms"                         to "9223372036854775807",
-    "index.interval.bytes"             to "4096",
-    "max.message.bytes"                to "1048588",
-    "message.timestamp.difference.max.ms" to "9223372036854775807",
-    "message.timestamp.type"           to "CreateTime",
-    "min.cleanable.dirty.ratio"        to "0.5",
-    "min.compaction.lag.ms"            to "0",
-    "max.compaction.lag.ms"            to "9223372036854775807",
-    "preallocate"                      to "false",
-    "segment.bytes"                    to "1073741824",
-    "segment.index.bytes"              to "10485760",
-    "segment.jitter.ms"                to "0",
-    "segment.ms"                       to "604800000",
-    "unclean.leader.election.enable"   to "false"
+    "min.insync.replicas"                    to "1",
+    "retention.bytes"                        to "-1",
+    "retention.ms"                           to "604800000",
+    "compression.type"                       to "producer",
+    "delete.retention.ms"                    to "86400000",
+    "file.delete.delay.ms"                   to "60000",
+    "flush.messages"                         to "9223372036854775807",
+    "flush.ms"                               to "9223372036854775807",
+    "index.interval.bytes"                   to "4096",
+    "local.retention.bytes"                  to "-2",
+    "local.retention.ms"                     to "-2",
+    "max.compaction.lag.ms"                  to "9223372036854775807",
+    "max.message.bytes"                      to "1048588",
+    "message.downconversion.enable"          to "true",
+    "message.format.version"                 to "",
+    "message.timestamp.difference.max.ms"    to "9223372036854775807",
+    "message.timestamp.type"                 to "CreateTime",
+    "min.cleanable.dirty.ratio"              to "0.5",
+    "min.compaction.lag.ms"                  to "0",
+    "preallocate"                            to "false",
+    "remote.storage.enable"                  to "false",
+    "segment.bytes"                          to "1073741824",
+    "segment.index.bytes"                    to "10485760",
+    "segment.jitter.ms"                      to "0",
+    "segment.ms"                             to "604800000",
+    "unclean.leader.election.enable"         to "false",
+    "leader.replication.throttled.replicas"  to "",
+    "follower.replication.throttled.replicas" to ""
 )
 
 private class TopicConfigRow(val key: String, kafkaDefault: String) {
@@ -78,6 +85,7 @@ class CreateTopicDialog(
     init {
         title = "Create New Topic"
         headerText = null
+        isResizable = true
         var collapsedHeight = 0.0
         setOnShown { collapsedHeight = dialogPane.scene?.window?.height ?: 0.0 }
         applyAppIcon()
@@ -169,7 +177,9 @@ class CreateTopicDialog(
                     private val link = Hyperlink().apply { isVisited = false }
                     override fun updateItem(item: String?, empty: Boolean) {
                         super.updateItem(item, empty)
-                        graphic = if (empty || item == null) null else link.also { it.text = item }
+                        if (empty || item == null) { graphic = null; tooltip = null; return }
+                        graphic = link.also { it.text = item }
+                        tooltip = Tooltip(item)
                     }
                 }
             }
