@@ -23,14 +23,14 @@ private val APP_STYLESHEET =
     WindowUtils::class.java.getResource("/com/freeconductor/styles.css")?.toExternalForm()
 
 fun Dialog<*>.applyAppIcon() {
-    dialogPane.sceneProperty().addListener { _, _, scene ->
-        if (scene != null) {
-            APP_STYLESHEET?.let { scene.stylesheets.add(it) }
-            scene.windowProperty().addListener { _, _, window ->
-                (window as? Stage)?.applyAppIcon()
-            }
-        }
+    fun injectStylesheet(scene: javafx.scene.Scene) {
+        APP_STYLESHEET?.let { if (!scene.stylesheets.contains(it)) scene.stylesheets.add(it) }
     }
+    // Inject stylesheet as soon as the scene is available
+    dialogPane.scene?.let { injectStylesheet(it) }
+    dialogPane.sceneProperty().addListener { _, _, scene -> scene?.let { injectStylesheet(it) } }
+    // Apply icon when the dialog is shown — window is guaranteed to exist at this point
+    setOnShown { (dialogPane.scene?.window as? Stage)?.applyAppIcon() }
 }
 
 private object WindowUtils
