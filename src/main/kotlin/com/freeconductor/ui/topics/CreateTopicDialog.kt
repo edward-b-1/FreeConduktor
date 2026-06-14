@@ -126,7 +126,11 @@ class CreateTopicDialog(
         replicationSpinner.valueProperty().addListener { _, _, n -> updateHint(partitionsSpinner.value, n) }
 
         val advancedPane = TitledPane("Advanced Configuration",
-            VBox(configTable).apply { padding = Insets(8.0, 0.0, 0.0, 0.0) }
+            VBox(configTable).apply {
+                padding = Insets(8.0, 0.0, 0.0, 0.0)
+                VBox.setVgrow(configTable, Priority.ALWAYS)
+                maxHeight = Double.MAX_VALUE
+            }
         ).apply {
             isExpanded = false
             isAnimated = false
@@ -169,6 +173,7 @@ class CreateTopicDialog(
                 },
                 advancedPane
             )
+            VBox.setVgrow(advancedPane, Priority.ALWAYS)
         }
 
         dialogPane.content = content
@@ -249,7 +254,8 @@ class CreateTopicDialog(
         val table = TableView<TopicConfigRow>().apply {
             columns.addAll(propCol, defaultCol, brokerCol, overrideCol)
             items.addAll(configRows)
-            prefHeight = 300.0
+            minHeight = 200.0
+            maxHeight = Double.MAX_VALUE
             columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN
             placeholder = Label("")
             styleClass.add("config-table")
